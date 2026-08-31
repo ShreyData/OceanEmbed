@@ -1,0 +1,4 @@
+*.ipynb_checkpoints
+*anaconda_projects
+glorys_data/
+Data/glorys_data/
