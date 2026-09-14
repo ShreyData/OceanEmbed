@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+pydantic
+psycopg[binary]
+python-dotenv
+xarray
+numpy
+netCDF4
+pytest
+httpx

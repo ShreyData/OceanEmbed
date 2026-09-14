@@ -2,3 +2,8 @@
 *anaconda_projects
 glorys_data/
 Data/glorys_data/
+.venv/
+.env
+__pycache__/
+.pytest_cache/
+*.pyc
