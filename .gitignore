@@ -7,3 +7,14 @@ Data/glorys_data/
 __pycache__/
 .pytest_cache/
 *.pyc
+Data/sst_data/
+Data/sss_data/
+Data/ssh_data/
+sss_data
+sst_data
+ssh_data
+winds_data
+Data/winds_data
+11460219.pdf
+index_.html
+SIH26066.pdf
