@@ -13,8 +13,7 @@ import xarray as xr
 from dotenv import load_dotenv
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
-REPOSITORY_ROOT = BACKEND_ROOT.parent
-DEFAULT_INPUT = REPOSITORY_ROOT / "Data" / "glorys_data" / "glorys_target_thetao_2020_01.nc"
+DEFAULT_INPUT = BACKEND_ROOT / "Data" / "glorys_target_thetao_2020_01.nc"
 STANDARD_DEPTHS = [0, 5, 10, 20, 30, 50, 75, 100, 125, 150, 200, 300, 500, 700, 1000]
 
 

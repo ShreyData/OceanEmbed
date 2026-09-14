@@ -2,11 +2,6 @@
 *anaconda_projects
 glorys_data/
 Data/glorys_data/
-.venv/
-.env
-__pycache__/
-.pytest_cache/
-*.pyc
 Data/sst_data/
 Data/sss_data/
 Data/ssh_data/

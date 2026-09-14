@@ -4,24 +4,24 @@ FastAPI backend for historical subsurface-temperature profiles and a database-ba
 
 ## Setup (Windows PowerShell)
 
-1. From the project root, start PostgreSQL and confirm it is healthy:
+1. From the `backend` directory, start PostgreSQL and confirm it is healthy:
 
    ```powershell
+   cd backend
    docker compose up -d postgres
    docker compose ps
    ```
 
-2. Enter the backend directory, create/activate a virtual environment, and install dependencies:
+2. Create/activate a virtual environment and install dependencies:
 
    ```powershell
-   cd backend
    py -3.11 -m venv .venv
    .\.venv\Scripts\Activate.ps1
    pip install -r requirements.txt
    Copy-Item .env.example .env
    ```
 
-3. Initialize the schema, then import the existing project data file (do not move or redownload it):
+3. Initialize the schema, then place your NetCDF file into `backend/Data/` and import it:
 
    ```powershell
    python scripts\init_db.py
