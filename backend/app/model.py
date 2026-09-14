@@ -17,13 +17,19 @@ def run_mock_inference(request: PredictionRequest) -> dict:
     available_dates = database.get_distinct_available_dates()
     if not available_dates:
         raise NoMockOutputError
-    profile = database.get_mock_profile(request.location.lat, request.location.lon, random.choice(available_dates))
-    if not profile:
+
+    # Fake prediction: randomly select an existing day from GLORYS data
+    chosen_date = random.choice(available_dates)
+    cube_data = database.get_historical_cube(chosen_date)
+    if not cube_data:
         raise NoMockOutputError
+
     return {
         "model_status": "success",
         "inference_time_ms": int((time.perf_counter() - started) * 1000),
-        "coordinate": {"lat": request.location.lat, "lon": request.location.lon},
         "target_date": request.target_date,
-        "reconstructed_profile": profile,
+        "source_reference_date": chosen_date,
+        "dimensions": cube_data["dimensions"],
+        "shape": cube_data["shape"],
+        "values": cube_data["values"],
     }

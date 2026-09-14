@@ -200,8 +200,12 @@ Once running, access:
 ## API Endpoints Overview
 
 - `GET /health` — Health check endpoint
-- `GET /api/v1/metadata/bounds` — Geospatial boundaries (`lat_min`, `lat_max`, `lon_min`, `lon_max`)
-- `GET /api/v1/metadata/depths` — Supported depth levels in meters
+- `GET /api/v1/metadata/bounds` — Geospatial boundaries (`lat_min=5.0`, `lat_max=30.0`, `lon_min=45.0`, `lon_max=105.0`, `step=0.25`)
+- `GET /api/v1/metadata/depths` — Supported standard depth levels in meters (15 depths: `0, 5, 10, 20, 30, 50, 75, 100, 125, 150, 200, 300, 500, 700, 1000`)
 - `GET /api/v1/metadata/available-dates` — Date range of available data
-- `GET /api/v1/ocean/historical?lat=15.25&lon=65.5&date=2020-01-15` — Historical depth-temperature profile query (optional `&depths=0,5,100` filter)
-- `POST /api/v1/ocean/predict` — Surface observations validation and mock profile prediction (inference is isolated in [`app/model.py`](file:///home/shrey/Data/SIH%202k26/backend/app/model.py) for easy drop-in replacement with a trained neural network)
+- `GET /api/v1/ocean/historical?date=2020-01-01` — **3D Volumetric Cube**:
+  - Parameters: `date` (required), optional `lat_min`, `lat_max`, `lon_min`, `lon_max`, `depths` (e.g. `0,50,100`), or point `lat`, `lon`.
+  - Output: Tensor of shape `[15, 101, 241]` (or sliced sub-cube) containing temperature values (`null` for land coordinates).
+- `POST /api/v1/ocean/predict` — **Subsurface Temperature 3D Cube Prediction**:
+  - Input: `target_date`, plus `surface_observations` validated strictly as **$7 \times 101 \times 241$** (accepts either a 3D array or a dictionary of 7 feature matrices: `sst_c`, `sss_psu`, `sla_m`, `u_current_ms`, `v_current_ms`, `u_wind_ms`, `v_wind_ms`).
+  - Output: Reconstructed 3D cube of shape **$15 \times 101 \times 241$** (currently returns random real GLORYS day as mock inference, isolated in [`app/model.py`](file:///home/shrey/Data/SIH%202k26/backend/app/model.py)).

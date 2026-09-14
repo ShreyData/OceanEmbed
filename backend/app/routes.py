@@ -5,7 +5,7 @@ from datetime import date
 import psycopg
 from fastapi import APIRouter, HTTPException, Query
 
-from . import database
+from . import database, snapping
 from .constants import GRID_STEP, LAT_MAX, LAT_MIN, LON_MAX, LON_MIN, STANDARD_DEPTHS
 from .model import NoMockOutputError, run_mock_inference
 from .schemas import PredictionRequest
@@ -55,15 +55,41 @@ def available_dates() -> dict:
 
 @router.get("/api/v1/ocean/historical")
 def historical(
-    lat: float = Query(ge=LAT_MIN, le=LAT_MAX),
-    lon: float = Query(ge=LON_MIN, le=LON_MAX),
-    date: date = Query(),
-    depths: str | None = Query(default=None),
+    date: date = Query(..., description="Target date for historical 3D temperature cube"),
+    lat_min: float = Query(default=LAT_MIN, ge=LAT_MIN, le=LAT_MAX, description="Minimum latitude (South)"),
+    lat_max: float = Query(default=LAT_MAX, ge=LAT_MIN, le=LAT_MAX, description="Maximum latitude (North)"),
+    lon_min: float = Query(default=LON_MIN, ge=LON_MIN, le=LON_MAX, description="Minimum longitude (West)"),
+    lon_max: float = Query(default=LON_MAX, ge=LON_MIN, le=LON_MAX, description="Maximum longitude (East)"),
+    depths: str | None = Query(default=None, description="Comma-separated depth levels in meters"),
+    lat: float | None = Query(default=None, ge=LAT_MIN, le=LAT_MAX, description="Optional point query latitude"),
+    lon: float | None = Query(default=None, ge=LON_MIN, le=LON_MAX, description="Optional point query longitude"),
 ) -> dict:
-    profile = database.get_historical_profile(lat, lon, date, _parse_depths(depths))
-    if not profile:
-        raise HTTPException(status_code=404, detail="No historical temperature data found for the requested coordinate and date.")
-    return {"coordinate": {"lat": lat, "lon": lon}, "date": date, "profile": profile}
+    if lat is not None and lon is not None:
+        lat_min = lat_max = lat
+        lon_min = lon_max = lon
+
+    if lat_min > lat_max:
+        raise HTTPException(status_code=422, detail="lat_min must be less than or equal to lat_max.")
+    if lon_min > lon_max:
+        raise HTTPException(status_code=422, detail="lon_min must be less than or equal to lon_max.")
+
+    parsed_depths = _parse_depths(depths)
+    try:
+        cube = database.get_historical_cube(
+            requested_date=date,
+            lat_min=lat_min,
+            lat_max=lat_max,
+            lon_min=lon_min,
+            lon_max=lon_max,
+            depths=parsed_depths,
+        )
+    except (psycopg.Error, RuntimeError) as exc:
+        raise HTTPException(status_code=503, detail="Database is unavailable.") from exc
+
+    if not cube:
+        raise HTTPException(status_code=404, detail="No historical temperature data found for the requested date and bounds.")
+
+    return cube
 
 
 @router.post("/api/v1/ocean/predict")
@@ -71,6 +97,7 @@ def predict(request: PredictionRequest) -> dict:
     try:
         return run_mock_inference(request)
     except NoMockOutputError as exc:
-        raise HTTPException(status_code=404, detail="No mock model output is available for the requested coordinate.") from exc
+        raise HTTPException(status_code=404, detail="No mock model output is available.") from exc
     except (psycopg.Error, RuntimeError) as exc:
         raise HTTPException(status_code=503, detail="Database is unavailable.") from exc
+
