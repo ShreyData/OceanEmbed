@@ -1,64 +1,207 @@
-# OceanEmbed backend
+# OceanEmbed Backend
 
-FastAPI backend for historical subsurface-temperature profiles and a database-backed mock prediction endpoint. PostgreSQL 16 runs in Docker; FastAPI runs locally in development.
+FastAPI backend providing historical subsurface-temperature profiles and a database-backed mock prediction endpoint. PostgreSQL 16 runs via Docker; FastAPI runs locally during development.
 
-## Setup (Windows PowerShell)
+---
 
-1. From the `backend` directory, start PostgreSQL and confirm it is healthy:
+## Prerequisites
 
-   ```powershell
-   cd backend
-   docker compose up -d postgres
-   docker compose ps
-   ```
+- **Docker** & **Docker Compose** installed and running
+- **Python 3.10+** (recommended: Python 3.11)
+- The dataset file `glorys_target_thetao_2020_01.nc` is already included directly in `backend/Data/`.
 
-2. Create/activate a virtual environment and install dependencies:
+---
 
-   ```powershell
-   py -3.11 -m venv .venv
-   .\.venv\Scripts\Activate.ps1
-   pip install -r requirements.txt
-   Copy-Item .env.example .env
-   ```
+## Setup & Running
 
-3. Initialize the schema, then place your NetCDF file into `backend/Data/` and import it:
+All commands below should be executed from within the `backend/` directory:
 
-   ```powershell
-   python scripts\init_db.py
-   python scripts\import_glorys.py
-   ```
+```bash
+cd backend
+```
 
-   Re-running either command is safe. The importer uses PostgreSQL COPY into a temporary staging table and ignores existing unique records. `docker compose down` preserves imported data; only `docker compose down -v` deletes the named database volume.
+### 1. Start PostgreSQL (Docker)
 
-4. Verify data manually if desired:
+Start the PostgreSQL 16 container in the background:
 
-   ```powershell
-   docker exec -it oceanembed-postgres psql -U oceanembed -d oceanembed
-   ```
+```bash
+docker compose up -d postgres
+```
 
-   ```sql
-   SELECT COUNT(*), MIN(date), MAX(date) FROM ocean_temperature_output;
-   SELECT DISTINCT depth_m FROM ocean_temperature_output ORDER BY depth_m;
-   ```
+Verify that the container is running and healthy:
 
-5. Start the API, open Swagger at http://localhost:8000/docs, and run the isolated API test suite:
+```bash
+docker compose ps
+```
 
-   ```powershell
-   uvicorn app.main:app --reload
-   pytest
-   ```
+> **Note on Ports:** The PostgreSQL container port `5432` is mapped to host port **`5433`** (defined in `docker-compose.yml`) to avoid conflicts with any pre-existing local PostgreSQL service. Database credentials default to:
+> - **Host:** `localhost`
+> - **Port:** `5433`
+> - **Database:** `oceanembed`
+> - **User:** `oceanembed`
+> - **Password:** `oceanembed`
 
-The tests monkeypatch database helpers and do not modify the development database.
+---
 
-The Docker database is published as `localhost:5433` in this checkout because a pre-existing local PostgreSQL service occupies port 5432. Inside Docker it remains PostgreSQL's standard port 5432.
+### 2. Set Up Virtual Environment & Dependencies
 
-## Endpoints
+#### **On Linux / macOS (Bash / Zsh):**
 
-- `GET /health`
-- `GET /api/v1/metadata/bounds`
-- `GET /api/v1/metadata/depths`
-- `GET /api/v1/metadata/available-dates`
-- `GET /api/v1/ocean/historical?lat=15.25&lon=65.5&date=2020-01-15`
-- `POST /api/v1/ocean/predict`
+```bash
+# Create virtual environment
+python3 -m venv .venv
 
-`/api/v1/ocean/historical` uses exact stored coordinates and supports optional `depths=0,5,100`. The prediction endpoint validates all seven surface observations, retains the requested target date, and currently returns a random stored historical profile for the requested coordinate. Its inference function is deliberately isolated in `app/model.py` so it can be replaced by a real model later without changing the API contract.
+# Activate virtual environment
+source .venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Create environment configuration from template
+cp .env.example .env
+```
+
+#### **On Windows (PowerShell):**
+
+```powershell
+# Create virtual environment
+py -3.11 -m venv .venv
+
+# Activate virtual environment
+.\.venv\Scripts\Activate.ps1
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Create environment configuration from template
+Copy-Item .env.example .env
+```
+
+#### **On Windows (Command Prompt - cmd.exe):**
+
+```cmd
+:: Create virtual environment
+py -3.11 -m venv .venv
+
+:: Activate virtual environment
+.venv\Scripts\activate.bat
+
+:: Install dependencies
+pip install -r requirements.txt
+
+:: Create environment configuration from template
+copy .env.example .env
+```
+
+---
+
+### 3. Initialize Database & Import Dataset
+
+The NetCDF dataset file (`backend/Data/glorys_target_thetao_2020_01.nc`) is already checked into GitHub in the `backend/Data/` folder.
+
+Run the schema initializer followed by the bulk import script:
+
+#### **On Linux / macOS:**
+
+```bash
+python3 scripts/init_db.py
+python3 scripts/import_glorys.py
+```
+
+#### **On Windows (PowerShell or CMD):**
+
+```powershell
+python scripts\init_db.py
+python scripts\import_glorys.py
+```
+
+> **Idempotent Execution:**
+> - `init_db.py` creates tables and indices using `IF NOT EXISTS`. Existing tables are left untouched.
+> - `import_glorys.py` copies records via a staging table and applies `ON CONFLICT DO NOTHING`. Re-running it will not generate duplicate rows.
+> - By default, `import_glorys.py` reads `backend/Data/glorys_target_thetao_2020_01.nc`. Custom file paths can be supplied via the `--input` flag:
+>   ```bash
+>   python scripts/import_glorys.py --input Data/custom_file.nc
+>   ```
+
+---
+
+### 4. Verify Database (Optional)
+
+To check the imported data in PostgreSQL directly:
+
+```bash
+docker exec -it oceanembed-postgres psql -U oceanembed -d oceanembed
+```
+
+Inside the PostgreSQL prompt:
+
+```sql
+-- Count imported records and check date boundaries
+SELECT COUNT(*), MIN(date), MAX(date) FROM ocean_temperature_output;
+
+-- Check available standard depths
+SELECT DISTINCT depth_m FROM ocean_temperature_output ORDER BY depth_m;
+
+-- Exit psql
+\q
+```
+
+---
+
+### 5. Run the Test Suite
+
+Run the isolated API test suite:
+
+#### **On Linux / macOS:**
+
+```bash
+pytest
+```
+
+#### **On Windows:**
+
+```powershell
+pytest
+```
+
+*(Tests mock the database layer and run isolated against mock objects without affecting your development database).*
+
+---
+
+### 6. Start the FastAPI Server
+
+Start the local server with auto-reload:
+
+```bash
+uvicorn app.main:app --reload --port 8000
+```
+
+Once running, access:
+- **Interactive Swagger UI:** [http://localhost:8000/docs](http://localhost:8000/docs)
+- **ReDoc Documentation:** [http://localhost:8000/redoc](http://localhost:8000/redoc)
+- **Health Check Endpoint:** [http://localhost:8000/health](http://localhost:8000/health)
+
+---
+
+## Stopping & Teardown
+
+- **Stop PostgreSQL container (preserves imported data):**
+  ```bash
+  docker compose down
+  ```
+
+- **Stop PostgreSQL and delete persistent database volume (wipes all data):**
+  ```bash
+  docker compose down -v
+  ```
+
+---
+
+## API Endpoints Overview
+
+- `GET /health` — Health check endpoint
+- `GET /api/v1/metadata/bounds` — Geospatial boundaries (`lat_min`, `lat_max`, `lon_min`, `lon_max`)
+- `GET /api/v1/metadata/depths` — Supported depth levels in meters
+- `GET /api/v1/metadata/available-dates` — Date range of available data
+- `GET /api/v1/ocean/historical?lat=15.25&lon=65.5&date=2020-01-15` — Historical depth-temperature profile query (optional `&depths=0,5,100` filter)
+- `POST /api/v1/ocean/predict` — Surface observations validation and mock profile prediction (inference is isolated in [`app/model.py`](file:///home/shrey/Data/SIH%202k26/backend/app/model.py) for easy drop-in replacement with a trained neural network)
