@@ -121,7 +121,10 @@ def _load_cube(requested_date: date) -> np.ndarray | None:
 
 
 def _to_rows(slice_f16: np.ndarray) -> list[list[float | None]]:
-    return [[None if (isinstance(v, float) and v != v) else v for v in row] for row in slice_f16.tolist()]
+    return [
+        [None if (isinstance(v, float) and v != v) else round(v, 2) for v in row]
+        for row in slice_f16.tolist()
+    ]
 
 
 def stream_historical_cube(
