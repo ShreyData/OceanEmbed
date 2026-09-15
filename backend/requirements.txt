@@ -3,6 +3,7 @@ uvicorn[standard]
 pydantic
 psycopg[binary]
 python-dotenv
+python-multipart
 xarray
 numpy
 netCDF4

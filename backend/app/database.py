@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 from datetime import date
 from pathlib import Path
-from typing import Iterable
+from typing import Generator, Iterable
 
 import numpy as np
 import psycopg
@@ -139,7 +139,7 @@ def get_historical_cube_raw(requested_date: date) -> np.ndarray | None:
     lat_to_idx = {lat: i for i, lat in enumerate(LATITUDES)}
     lon_to_idx = {lon: i for i, lon in enumerate(LONGITUDES)}
 
-    cube = np.full((NUM_DEPTHS, NUM_LATS, NUM_LONS), np.nan, dtype=np.float32)
+    cube = np.full((NUM_DEPTHS, NUM_LATS, NUM_LONS), np.nan, dtype=np.float16)
     for d, lat, lon, temp in rows:
         d_i = depth_to_idx.get(int(d))
         lat_i = lat_to_idx.get(round(float(lat), 2))
@@ -190,7 +190,7 @@ def get_historical_cube(
         return None
 
     subcube = cube[np.ix_(depth_indices, lat_indices, lon_indices)]
-    values = np.where(np.isnan(subcube), None, np.round(subcube, 2)).tolist()
+    values = np.where(np.isnan(subcube), None, np.round(subcube.astype(np.float32), 2)).tolist()
 
     return {
         "date": requested_date,
@@ -202,5 +202,87 @@ def get_historical_cube(
         "shape": [len(selected_depths), len(selected_lats), len(selected_lons)],
         "values": values,
     }
+
+
+def _slice_to_json_rows(slice_f16: np.ndarray) -> list[list[float | None]]:
+    """Convert a float16 2-D numpy slice (lat × lon) to a nested Python list.
+
+    NaN cells become None (JSON null). Finite values are kept as Python float
+    (already rounded to float16 precision, ~3 significant figures).
+    """
+    rows: list[list[float | None]] = []
+    for row in slice_f16.tolist():
+        rows.append([None if (isinstance(v, float) and v != v) else v for v in row])
+    return rows
+
+
+def stream_historical_cube(
+    requested_date: date,
+    lat_min: float = LAT_MIN,
+    lat_max: float = LAT_MAX,
+    lon_min: float = LON_MIN,
+    lon_max: float = LON_MAX,
+    depths: Iterable[int] | None = None,
+) -> Generator[dict, None, None]:
+    """Yield NDJSON-ready dicts for the requested cube, one depth slice at a time.
+
+    Chunk types emitted (in order):
+      1. ``{"type": "metadata", ...}``          – dimensions / shape info
+      2. ``{"type": "depth_slice", ...}``        – one per depth level (float16 values)
+      3. ``{"type": "complete", ...}``           – signals end of stream
+
+    Raises nothing; if no data is found the generator is empty (yields nothing).
+    """
+    cube = get_historical_cube_raw(requested_date)
+    if cube is None:
+        return
+
+    # ── resolve depth filter ───────────────────────────────────────────────
+    if depths is None:
+        selected_depths = STANDARD_DEPTHS
+        depth_indices = list(range(NUM_DEPTHS))
+    else:
+        req_set = set(depths)
+        selected_depths = [d for d in STANDARD_DEPTHS if d in req_set]
+        depth_indices = [i for i, d in enumerate(STANDARD_DEPTHS) if d in req_set]
+
+    # ── resolve spatial filter ─────────────────────────────────────────────
+    lat_indices = [i for i, lat in enumerate(LATITUDES) if lat_min <= lat <= lat_max]
+    selected_lats = [LATITUDES[i] for i in lat_indices]
+    lon_indices = [i for i, lon in enumerate(LONGITUDES) if lon_min <= lon <= lon_max]
+    selected_lons = [LONGITUDES[i] for i in lon_indices]
+
+    if not depth_indices or not lat_indices or not lon_indices:
+        return
+
+    total = len(depth_indices)
+
+    # ── 1. metadata chunk ──────────────────────────────────────────────────
+    yield {
+        "type": "metadata",
+        "date": str(requested_date),
+        "depths": selected_depths,
+        "latitudes": selected_lats,
+        "longitudes": selected_lons,
+        "shape": [total, len(selected_lats), len(selected_lons)],
+        "dtype": "float16",
+    }
+
+    # ── 2. one depth-slice chunk per level ────────────────────────────────
+    lat_arr = np.array(lat_indices)
+    lon_arr = np.array(lon_indices)
+    for out_i, d_i in enumerate(depth_indices):
+        # Select the 2-D slice (lat × lon) — stays float16
+        slice_2d: np.ndarray = cube[d_i][np.ix_(lat_arr, lon_arr)]
+        yield {
+            "type": "depth_slice",
+            "depth_index": out_i,
+            "depth_m": selected_depths[out_i],
+            "values": _slice_to_json_rows(slice_2d),
+        }
+
+    # ── 3. completion marker ───────────────────────────────────────────────
+    yield {"type": "complete", "total_depth_slices": total}
+
 
 
