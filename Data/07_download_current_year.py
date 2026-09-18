@@ -16,7 +16,7 @@ import earthaccess
 import concurrent.futures
 
 BBOX = {"min_lon": 45.0, "max_lon": 105.0, "min_lat": 5.0, "max_lat": 30.0}
-CONCEPT_ID = "C2098858642-POCLOUD" # OSCAR L4 Currents
+CONCEPT_ID = "C2098858642-POCLOUD"
 
 def is_netcdf_valid(filepath: str) -> bool:
     if not os.path.exists(filepath):
@@ -70,7 +70,6 @@ def process_month(year: int, month: int, output_dir: str, base_temp_dir: str):
             )
             ds_subset = ds_subset[["u", "v"]]
             
-            # Matrix realignment to prevent rotation errors
             ds_subset = ds_subset.transpose("time", "latitude", "longitude")
             ds_subset = ds_subset.squeeze(drop=True)
             
@@ -82,9 +81,10 @@ def process_month(year: int, month: int, output_dir: str, base_temp_dir: str):
         else:
             return f"[{year}-{month_str}] ❌ [ERROR] Output corrupted."
 
+    except KeyboardInterrupt:
+        return f"[{year}-{month_str}] 🛑 [INTERRUPTED] Worker aborted cleanly."
     except Exception as e:
         return f"[{year}-{month_str}] ❌ [EXCEPTION] {e}"
-
     finally:
         shutil.rmtree(month_raw_dir, ignore_errors=True)
         if os.path.exists(temp_filepath):
@@ -101,20 +101,29 @@ def main():
     
     temp_dir = os.path.join(year_output_dir, ".tmp")
     if os.path.exists(temp_dir):
-        shutil.rmtree(temp_dir)
+        shutil.rmtree(temp_dir, ignore_errors=True)
     os.makedirs(temp_dir, exist_ok=True)
 
     print(f"🚀 STARTING PARALLEL CURRENTS PIPELINE FOR YEAR: {args.year}")
     
     max_workers = min(4, os.cpu_count() or 1)
     
-    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(process_month, args.year, m, year_output_dir, temp_dir): m for m in range(1, 13)}
-        
+    executor = concurrent.futures.ProcessPoolExecutor(max_workers=max_workers)
+    futures = {executor.submit(process_month, args.year, m, year_output_dir, temp_dir): m for m in range(1, 13)}
+    
+    try:
         for future in tqdm(concurrent.futures.as_completed(futures), total=12, desc="Months Processed"):
-            print(future.result())
+            print(future.result(), flush=True)
+            
+    except KeyboardInterrupt:
+        print("\n\n🛑 KEYBOARD INTERRUPT DETECTED: Shutting down workers gracefully...", flush=True)
+        executor.shutdown(wait=False, cancel_futures=True)
+        print("💾 Progress saved. Temporary files cleaned up.", flush=True)
+        sys.exit(0)
+        
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
-    shutil.rmtree(temp_dir, ignore_errors=True)
     print(f"🏁 Year {args.year} complete.")
 
 if __name__ == "__main__":
