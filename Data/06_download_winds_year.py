@@ -57,7 +57,8 @@ def process_month(year: int, month: int, output_dir: str, base_temp_dir: str):
             return f"[{year}-{month_str}] [WARNING] No granules found."
 
         print(f"[{year}-{month_str}] ⬇️ Downloading {len(results)} granules...", flush=True)
-        earthaccess.download(results, local_path=month_raw_dir)
+        # THE FIX: Restrict earthaccess internal threading to prevent NASA bans
+        earthaccess.download(results, local_path=month_raw_dir, threads=2)
 
         print(f"[{year}-{month_str}] ⚙️ Cropping and regridding tensor...", flush=True)
         with xr.open_mfdataset(f"{month_raw_dir}/*.nc", combine='by_coords') as ds:
@@ -100,7 +101,8 @@ def main():
 
     print(f"🚀 STARTING PARALLEL WINDS PIPELINE FOR YEAR: {args.year}")
     
-    max_workers = min(4, os.cpu_count() or 1)
+    # THE FIX: Hardcap multi-processing to exactly 2 concurrent months
+    max_workers = 2
     
     executor = concurrent.futures.ProcessPoolExecutor(max_workers=max_workers)
     futures = {executor.submit(process_month, args.year, m, year_output_dir, temp_dir): m for m in range(1, 13)}
@@ -111,7 +113,6 @@ def main():
             
     except KeyboardInterrupt:
         print("\n\n🛑 KEYBOARD INTERRUPT DETECTED: Shutting down workers gracefully...", flush=True)
-        # Cancel any months that haven't started yet and drop active workers
         executor.shutdown(wait=False, cancel_futures=True)
         print("💾 Progress saved. Temporary files cleaned up.", flush=True)
         sys.exit(0)
