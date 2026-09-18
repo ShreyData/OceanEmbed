@@ -30,7 +30,6 @@ def is_netcdf_valid(filepath: str) -> bool:
         return False
 
 def process_month(year: int, month: int, output_dir: str, base_temp_dir: str):
-    # Initialize authentication in child process memory using ~/.netrc
     earthaccess.login(persist=True)
 
     month_str = f"{month:02d}"
@@ -48,15 +47,19 @@ def process_month(year: int, month: int, output_dir: str, base_temp_dir: str):
     temp_filepath = os.path.join(base_temp_dir, f"temp_{final_filename}")
 
     try:
+        print(f"[{year}-{month_str}] 🔍 Searching NASA servers...", flush=True)
         results = earthaccess.search_data(
             concept_id=CONCEPT_ID,
             temporal=(start_date.strftime("%Y-%m-%d %H:%M:%S"), end_date.strftime("%Y-%m-%d %H:%M:%S"))
         )
+        
         if not results:
             return f"[{year}-{month_str}] [WARNING] No granules found."
 
+        print(f"[{year}-{month_str}] ⬇️ Downloading {len(results)} granules...", flush=True)
         earthaccess.download(results, local_path=month_raw_dir)
 
+        print(f"[{year}-{month_str}] ⚙️ Cropping and regridding tensor...", flush=True)
         with xr.open_mfdataset(f"{month_raw_dir}/*.nc", combine='by_coords') as ds:
             ds_subset = ds.sel(
                 latitude=slice(BBOX["min_lat"], BBOX["max_lat"]),
@@ -68,7 +71,7 @@ def process_month(year: int, month: int, output_dir: str, base_temp_dir: str):
 
         if is_netcdf_valid(temp_filepath):
             shutil.move(temp_filepath, final_filepath)
-            return f"[{year}-{month_str}] ✅ Successfully processed."
+            return f"[{year}-{month_str}] ✅ Successfully processed and saved."
         else:
             return f"[{year}-{month_str}] ❌ [ERROR] Output corrupted."
 
@@ -82,7 +85,7 @@ def process_month(year: int, month: int, output_dir: str, base_temp_dir: str):
 
 def main():
     parser = argparse.ArgumentParser(description="Parallel yearly CCMP Winds downloader.")
-    parser.add_argument("--year", type=int, required=True, help="Year to download (e.g., 2000)")
+    parser.add_argument("--year", type=int, required=True, help="Year to download")
     parser.add_argument("--base-dir", type=str, default="winds_data/Down", help="Base directory")
     args = parser.parse_args()
 
