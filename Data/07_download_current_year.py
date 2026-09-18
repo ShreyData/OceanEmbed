@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-06_download_winds_year.py: Parallel, atomic single-year downloader for CCMP Winds.
+07_download_currents_year.py: Parallel, atomic single-year downloader for OSCAR Currents.
 Usage:
-    python 06_download_winds_year.py --year 2000
+    python 07_download_currents_year.py --year 2000
 """
 
 import argparse
@@ -16,14 +16,14 @@ import earthaccess
 import concurrent.futures
 
 BBOX = {"min_lon": 45.0, "max_lon": 105.0, "min_lat": 5.0, "max_lat": 30.0}
-CONCEPT_ID = "C2916514952-POCLOUD" # CCMP Winds
+CONCEPT_ID = "C2098858642-POCLOUD" # OSCAR L4 Currents
 
 def is_netcdf_valid(filepath: str) -> bool:
     if not os.path.exists(filepath):
         return False
     try:
         with xr.open_dataset(filepath) as ds:
-            if all(v in ds.data_vars for v in ["uwnd", "vwnd"]) and len(ds.time) > 0:
+            if all(v in ds.data_vars for v in ["u", "v"]) and len(ds.time) > 0:
                 return True
         return False
     except Exception:
@@ -34,7 +34,7 @@ def process_month(year: int, month: int, output_dir: str, base_temp_dir: str):
     earthaccess.login(persist=True)
 
     month_str = f"{month:02d}"
-    final_filename = f"winds_{month_str}_{year}.nc"
+    final_filename = f"currents_{month_str}_{year}.nc"
     final_filepath = os.path.join(output_dir, final_filename)
 
     if is_netcdf_valid(final_filepath):
@@ -58,12 +58,19 @@ def process_month(year: int, month: int, output_dir: str, base_temp_dir: str):
         earthaccess.download(results, local_path=month_raw_dir)
 
         with xr.open_mfdataset(f"{month_raw_dir}/*.nc", combine='by_coords') as ds:
+            if "lat" in ds.variables and "lon" in ds.variables:
+                ds = ds.rename_vars({"lat": "latitude", "lon": "longitude"})
+
             ds_subset = ds.sel(
                 latitude=slice(BBOX["min_lat"], BBOX["max_lat"]),
                 longitude=slice(BBOX["min_lon"], BBOX["max_lon"])
             )
-            ds_subset = ds_subset[["uwnd", "vwnd"]]
-            ds_subset = ds_subset.resample(time="1D").mean()
+            ds_subset = ds_subset[["u", "v"]]
+            
+            # Reorder dimensions to standard (time, latitude, longitude)
+            ds_subset = ds_subset.transpose("time", "latitude", "longitude")
+            ds_subset = ds_subset.squeeze(drop=True)
+            
             ds_subset.to_netcdf(temp_filepath)
 
         if is_netcdf_valid(temp_filepath):
@@ -81,9 +88,9 @@ def process_month(year: int, month: int, output_dir: str, base_temp_dir: str):
             os.remove(temp_filepath)
 
 def main():
-    parser = argparse.ArgumentParser(description="Parallel yearly CCMP Winds downloader.")
+    parser = argparse.ArgumentParser(description="Parallel yearly OSCAR Currents downloader.")
     parser.add_argument("--year", type=int, required=True, help="Year to download (e.g., 2000)")
-    parser.add_argument("--base-dir", type=str, default="winds_data/Down", help="Base directory")
+    parser.add_argument("--base-dir", type=str, default="currents_data/Down", help="Base directory")
     args = parser.parse_args()
 
     year_output_dir = os.path.join(args.base_dir, str(args.year))
@@ -94,7 +101,7 @@ def main():
         shutil.rmtree(temp_dir)
     os.makedirs(temp_dir, exist_ok=True)
 
-    print(f"🚀 STARTING PARALLEL WINDS PIPELINE FOR YEAR: {args.year}")
+    print(f"🚀 STARTING PARALLEL CURRENTS PIPELINE FOR YEAR: {args.year}")
     
     max_workers = min(4, os.cpu_count() or 1)
     
