@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardHeader, CardTitle, Input, Select, Button, Badge, LoadingState, ErrorState } from '../components/ui';
+import { Card, CardHeader, CardTitle, Input, Select, Button, Badge, LoadingState, ErrorState, Tabs } from '../components/ui';
 import { fetchMetadata, fetchHistoricalData } from '../api/client';
 import Visualizer2D from '../components/Visualizer2D';
+import Visualizer3D from '../components/Visualizer3D';
+import VisualizerProfile from '../components/VisualizerProfile';
+import VisualizerVolume from '../components/VisualizerVolume';
 
 const ExplorePage = () => {
   const [initStatus, setInitStatus] = useState('loading'); // 'loading', 'success', 'error'
   const [initError, setInitError] = useState('');
   const [metadata, setMetadata] = useState(null);
+  const [activeTab, setActiveTab] = useState('slice');
 
   // Form State
   const [query, setQuery] = useState({
@@ -212,36 +216,63 @@ const ExplorePage = () => {
               <CardTitle>Dataset Info</CardTitle>
             </CardHeader>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.875rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span className="text-slate-light">Date Range:</span>
-                <span>{metadata.dates.min_date} to {metadata.dates.max_date}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
+                <span className="text-slate-light" style={{ whiteSpace: 'nowrap' }}>Date Range:</span>
+                <span style={{ textAlign: 'right' }}>{metadata.dates.min_date} to {metadata.dates.max_date}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span className="text-slate-light">Lat Bounds:</span>
-                <span>{metadata.bounds.latitude.min}° to {metadata.bounds.latitude.max}°</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
+                <span className="text-slate-light" style={{ whiteSpace: 'nowrap' }}>Lat Bounds:</span>
+                <span style={{ textAlign: 'right' }}>{metadata.bounds.latitude.min}° to {metadata.bounds.latitude.max}°</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span className="text-slate-light">Lon Bounds:</span>
-                <span>{metadata.bounds.longitude.min}° to {metadata.bounds.longitude.max}°</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
+                <span className="text-slate-light" style={{ whiteSpace: 'nowrap' }}>Lon Bounds:</span>
+                <span style={{ textAlign: 'right' }}>{metadata.bounds.longitude.min}° to {metadata.bounds.longitude.max}°</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span className="text-slate-light">Resolution:</span>
-                <span>{metadata.bounds.latitude.step}° x {metadata.bounds.longitude.step}°</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
+                <span className="text-slate-light" style={{ whiteSpace: 'nowrap' }}>Resolution:</span>
+                <span style={{ textAlign: 'right' }}>{metadata.bounds.latitude.step}° x {metadata.bounds.longitude.step}°</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span className="text-slate-light">Depths:</span>
-                <span>{metadata.depths.length} standard levels</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
+                <span className="text-slate-light" style={{ whiteSpace: 'nowrap' }}>Depths:</span>
+                <span style={{ textAlign: 'right' }}>{metadata.depths.length} standard levels</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--color-border)' }}>
-                <span className="text-slate-light">Variable:</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--color-border)' }}>
+                <span className="text-slate-light" style={{ whiteSpace: 'nowrap' }}>Variable:</span>
                 <Badge variant="neutral">Temperature (thetao)</Badge>
               </div>
             </div>
           </Card>
         </div>
 
-        {/* 2D Geographic Visualization */}
-        <Visualizer2D dataState={vizState} errorMsg={vizError} />
+        {/* Visualizations with Tabs */}
+        <div style={{ width: '100%', minWidth: 0 }}>
+          <Tabs 
+            tabs={[
+              { 
+                id: 'slice', 
+                label: '2D Depth Slice', 
+                content: <Visualizer2D dataState={vizState} errorMsg={vizError} />
+              },
+              { 
+                id: 'slice3d', 
+                label: '3D Visualization', 
+                content: <Visualizer3D dataState={vizState} errorMsg={vizError} />
+              },
+              {
+                id: 'volume',
+                label: '3D Surface',
+                content: <VisualizerVolume dataState={vizState} errorMsg={vizError} />
+              },
+              { 
+                id: 'profile', 
+                label: 'Vertical Profile', 
+                content: <VisualizerProfile dataState={vizState} />
+              }
+            ]}
+            activeTab={activeTab}
+            onTabChange={(id) => setActiveTab(id)}
+          />
+        </div>
       </div>
     </div>
   );

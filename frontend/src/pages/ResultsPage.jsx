@@ -3,10 +3,13 @@ import { Card, CardHeader, CardTitle, Badge, Button, Tabs, EmptyState } from '..
 import { useNavigate } from 'react-router-dom';
 import Visualizer2D from '../components/Visualizer2D';
 import VisualizerProfile from '../components/VisualizerProfile';
+import Visualizer3D from '../components/Visualizer3D';
+import VisualizerVolume from '../components/VisualizerVolume';
 
 const ResultsPage = () => {
   const navigate = useNavigate();
   const [dataState, setDataState] = useState(null);
+  const [activeTab, setActiveTab] = useState('slice');
 
   useEffect(() => {
     // Read the result handed off from /input
@@ -37,6 +40,16 @@ const ResultsPage = () => {
       id: 'slice', 
       label: '2D Depth Slice', 
       content: <Visualizer2D dataState={dataState} errorMsg="" />
+    },
+    { 
+      id: 'slice3d', 
+      label: '3D Visualization', 
+      content: <Visualizer3D dataState={dataState} errorMsg="" />
+    },
+    {
+      id: 'volume',
+      label: '3D Surface',
+      content: <VisualizerVolume dataState={dataState} errorMsg="" />
     },
     { 
       id: 'profile', 
@@ -96,8 +109,8 @@ const ResultsPage = () => {
       <div style={{ width: '100%' }}>
         <Tabs 
           tabs={resultTabs}
-          activeTab="slice"
-          onTabChange={() => {}}
+          activeTab={activeTab}
+          onTabChange={(id) => setActiveTab(id)}
         />
       </div>
     </div>
