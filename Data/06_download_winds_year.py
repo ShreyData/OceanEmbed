@@ -14,6 +14,8 @@ import xarray as xr
 from tqdm import tqdm
 import earthaccess
 import concurrent.futures
+import time
+import random
 
 BBOX = {"min_lon": 45.0, "max_lon": 105.0, "min_lat": 5.0, "max_lat": 30.0}
 CONCEPT_ID = "C2916514952-POCLOUD"
@@ -29,10 +31,23 @@ def is_netcdf_valid(filepath: str) -> bool:
     except Exception:
         return False
 
-def process_month(year: int, month: int, output_dir: str, base_temp_dir: str):
-    earthaccess.login(persist=True)
 
+def process_month(year: int, month: int, output_dir: str, base_temp_dir: str):
     month_str = f"{month:02d}"
+    
+    # 1. Jitter: Stagger worker start times to prevent login stampedes
+    time.sleep(random.uniform(1, 5))
+    
+    # 2. Retry Logic: Tolerate dropped authentication connections
+    for attempt in range(3):
+        try:
+            earthaccess.login(persist=True)
+            break
+        except Exception as e:
+            if attempt == 2:
+                return f"[{year}-{month_str}] ❌ [LOGIN FAILURE] {e}"
+            time.sleep(2)
+
     final_filename = f"winds_{month_str}_{year}.nc"
     final_filepath = os.path.join(output_dir, final_filename)
 
@@ -57,7 +72,7 @@ def process_month(year: int, month: int, output_dir: str, base_temp_dir: str):
             return f"[{year}-{month_str}] [WARNING] No granules found."
 
         print(f"[{year}-{month_str}] ⬇️ Downloading {len(results)} granules...", flush=True)
-        # THE FIX: Restrict earthaccess internal threading to prevent NASA bans
+        # THE FIX: Restrict earthaccess internal threading
         earthaccess.download(results, local_path=month_raw_dir, threads=2)
 
         print(f"[{year}-{month_str}] ⚙️ Cropping and regridding tensor...", flush=True)
@@ -84,7 +99,6 @@ def process_month(year: int, month: int, output_dir: str, base_temp_dir: str):
         shutil.rmtree(month_raw_dir, ignore_errors=True)
         if os.path.exists(temp_filepath):
             os.remove(temp_filepath)
-
 def main():
     parser = argparse.ArgumentParser(description="Parallel yearly CCMP Winds downloader.")
     parser.add_argument("--year", type=int, required=True, help="Year to download")

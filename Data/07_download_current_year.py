@@ -14,6 +14,8 @@ import xarray as xr
 from tqdm import tqdm
 import earthaccess
 import concurrent.futures
+import time
+import random
 
 BBOX = {"min_lon": 45.0, "max_lon": 105.0, "min_lat": 5.0, "max_lat": 30.0}
 CONCEPT_ID = "C2098858642-POCLOUD"
@@ -30,9 +32,21 @@ def is_netcdf_valid(filepath: str) -> bool:
         return False
 
 def process_month(year: int, month: int, output_dir: str, base_temp_dir: str):
-    earthaccess.login(persist=True)
-
     month_str = f"{month:02d}"
+    
+    # 1. Jitter: Stagger worker start times by 1 to 5 seconds to prevent login stampedes
+    time.sleep(random.uniform(1, 5))
+    
+    # 2. Retry Logic: Tolerate dropped authentication connections
+    for attempt in range(3):
+        try:
+            earthaccess.login(persist=True)
+            break  # Success, exit the loop
+        except Exception as e:
+            if attempt == 2:
+                return f"[{year}-{month_str}] ❌ [LOGIN FAILURE] {e}"
+            time.sleep(2) # Wait 2 seconds before retrying
+
     final_filename = f"currents_{month_str}_{year}.nc"
     final_filepath = os.path.join(output_dir, final_filename)
 
@@ -90,7 +104,7 @@ def process_month(year: int, month: int, output_dir: str, base_temp_dir: str):
         shutil.rmtree(month_raw_dir, ignore_errors=True)
         if os.path.exists(temp_filepath):
             os.remove(temp_filepath)
-
+            
 def main():
     parser = argparse.ArgumentParser(description="Parallel yearly OSCAR Currents downloader.")
     parser.add_argument("--year", type=int, required=True, help="Year to download")
