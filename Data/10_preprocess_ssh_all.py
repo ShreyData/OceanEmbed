@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-10_preprocess_ssh_all.py: Bulk interpolates raw SSH/Currents data to the 100x240 2D tensor format.
+10_preprocess_ssh_all.py: Bulk interpolates raw S3 SSH data to the 100x240 2D tensor format.
 Usage:
     python 10_preprocess_ssh_all.py
 """
@@ -13,21 +13,20 @@ import numpy as np
 import xarray as xr
 from tqdm import tqdm
 
-# Define the exact 2D target tensor boundaries
+# Define the exact 2D target tensor boundaries (100x240 grid at 0.25 deg resolution)
 TARGET_LAT = np.arange(5.0, 30.0, 0.25)
 TARGET_LON = np.arange(45.0, 105.0, 0.25)
 
 def is_valid_netcdf(filepath: str) -> bool:
-    """Checks if the standardized SSH NetCDF file contains all 3 variables and matches tensor dimensions."""
+    """Checks if the standardized SSH NetCDF file contains 'sla' and matches 100x240 tensor dimensions."""
     if not os.path.exists(filepath):
         return False
     try:
         with xr.open_dataset(filepath) as ds:
             # Check if dimensions match the standardized 100x240 tensor
             if len(ds.latitude) == 100 and len(ds.longitude) == 240:
-                # Ensure all three bundled variables are present
-                required_vars = ["sla", "ugosa", "vgosa"]
-                if all(v in ds.data_vars for v in required_vars):
+                # Ensure the single required variable 'sla' is present
+                if "sla" in ds.data_vars:
                     return True
         return False
     except Exception:
@@ -42,7 +41,7 @@ def main():
     os.makedirs(temp_dir, exist_ok=True)
 
     print("=" * 60)
-    print("STARTING BULK REGRIDDING PIPELINE FOR ALL SSH & CURRENTS DATA")
+    print("STARTING BULK REGRIDDING PIPELINE FOR S3 SSH DATA")
     print(f"Scanning for inputs in: {os.path.abspath(input_base_dir)}")
     print(f"Target Directory: {os.path.abspath(output_dir)}")
     print("=" * 60)
@@ -90,7 +89,7 @@ def main():
             try:
                 with xr.open_dataset(input_filepath) as ds:
                     
-                    # 2. Interpolate all 3 variables to 100x240 grid with edge extrapolation
+                    # 2. Interpolate 'sla' to 100x240 grid with edge extrapolation and cast to float32
                     ds_standardized = ds.interp(
                         latitude=TARGET_LAT,
                         longitude=TARGET_LON,
