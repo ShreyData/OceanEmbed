@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-11_preprocess_winds_all.py: Bulk interpolates raw ERA5 Winds data to the 100x240 2D tensor format.
+12_preprocess_winds_all.py: Bulk interpolates raw S3 Winds data to the exact 100x240 2D master grid.
 Usage:
-    python 11_preprocess_winds_all.py
+    python 12_preprocess_winds_all.py
 """
 
 import os
@@ -13,20 +13,18 @@ import numpy as np
 import xarray as xr
 from tqdm import tqdm
 
-# Define the exact 2D target tensor boundaries
+# Define the exact 2D target tensor boundaries (100x240 grid at 0.25 deg resolution)
 TARGET_LAT = np.arange(5.0, 30.0, 0.25)
 TARGET_LON = np.arange(45.0, 105.0, 0.25)
 
 def is_valid_netcdf(filepath: str) -> bool:
-    """Checks if the standardized Winds NetCDF file contains u10/v10 and matches tensor dimensions."""
+    """Checks if the standardized Winds NetCDF contains uwnd, vwnd and matches 100x240 dimensions."""
     if not os.path.exists(filepath):
         return False
     try:
         with xr.open_dataset(filepath) as ds:
-            # Check if dimensions match the standardized 100x240 tensor
             if len(ds.latitude) == 100 and len(ds.longitude) == 240:
-                # Ensure both wind vectors are present
-                if "u10" in ds.data_vars and "v10" in ds.data_vars:
+                if all(v in ds.data_vars for v in ["uwnd", "vwnd"]):
                     return True
         return False
     except Exception:
@@ -41,12 +39,11 @@ def main():
     os.makedirs(temp_dir, exist_ok=True)
 
     print("=" * 60)
-    print("STARTING BULK REGRIDDING PIPELINE FOR ERA5 WINDS DATA")
+    print("STARTING BULK REGRIDDING PIPELINE FOR WINDS DATA")
     print(f"Scanning for inputs in: {os.path.abspath(input_base_dir)}")
     print(f"Target Directory: {os.path.abspath(output_dir)}")
     print("=" * 60)
 
-    # Recursively find all downloaded Winds netCDF files across all year subfolders
     search_pattern = os.path.join(input_base_dir, "**", "winds_*.nc")
     all_raw_files = glob.glob(search_pattern, recursive=True)
     all_raw_files.sort()
@@ -61,10 +58,9 @@ def main():
     failed_files = []
 
     try:
-        for input_filepath in tqdm(all_raw_files, desc="Processing Winds Files", unit="file"):
+        for input_filepath in tqdm(all_raw_files, desc="Processing Winds", unit="file"):
             filename = os.path.basename(input_filepath)
             
-            # Reformat output name: winds_01_2000.nc -> winds_input_01_2000.nc
             parts = filename.split('_')
             if len(parts) >= 3:
                 month = parts[1]
@@ -77,28 +73,17 @@ def main():
             output_filepath = os.path.join(output_dir, output_filename)
             temp_filepath = os.path.join(temp_dir, f"temp_{output_filename}")
 
-            # 1. Skip if already successfully processed
             if is_valid_netcdf(output_filepath):
                 successful_files += 1
                 continue
 
-            # Clean up any lingering temp file
             if os.path.exists(temp_filepath):
                 os.remove(temp_filepath)
 
             try:
                 with xr.open_dataset(input_filepath) as ds:
                     
-                    # 2. Standardize time coordinate name
-                    if "valid_time" in ds.dims or "valid_time" in ds.coords:
-                        ds = ds.rename({"valid_time": "time"})
-                    
-                    # 3. Drop ERA5 junk metadata scalar coordinates to keep tensors clean
-                    vars_to_drop = [v for v in ["number", "expver"] if v in ds.coords or v in ds.variables]
-                    if vars_to_drop:
-                        ds = ds.drop_vars(vars_to_drop)
-
-                    # 4. Interpolate to 100x240 grid with edge extrapolation (flips latitude automatically)
+                    # Interpolate uwnd, vwnd to exact master coordinate grid
                     ds_standardized = ds.interp(
                         latitude=TARGET_LAT,
                         longitude=TARGET_LON,
@@ -106,10 +91,9 @@ def main():
                         kwargs={"fill_value": "extrapolate"}
                     ).astype(np.float32)
 
-                    # Save to temporary file (Atomic Write)
+                    # Note: Intentional omission of .fillna(0.0) based on pipeline requirements
                     ds_standardized.to_netcdf(temp_filepath)
 
-                # Move to final destination upon success
                 if is_valid_netcdf(temp_filepath):
                     shutil.move(temp_filepath, output_filepath)
                     successful_files += 1
@@ -119,7 +103,6 @@ def main():
                         os.remove(temp_filepath)
 
             except Exception as e:
-                # UNMASKED ERROR BLOCK: Prints exact failure reason and stops execution
                 print(f"\n[FATAL ERROR] on {filename}: {str(e)}")
                 if os.path.exists(temp_filepath):
                     os.remove(temp_filepath)
@@ -132,7 +115,6 @@ def main():
         sys.exit(0)
 
     finally:
-        # Always clean up the temporary directory
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir, ignore_errors=True)
 
