@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-13_preprocess_currents_all.py: Bulk interpolates raw S3 Currents data to the 100x240 2D tensor format and masks landmasses.
+13_preprocess_currents_all.py: Bulk interpolates raw S3 Currents data to the 100x240 2D tensor format.
+Leaves NaNs (landmasses) untouched for unified downstream masking.
 Usage:
     python 13_preprocess_currents_all.py
 """
@@ -97,8 +98,8 @@ def main():
                         kwargs={"fill_value": "extrapolate"}
                     )
                     
-                    # 3. Handle Landmass: Fill any lingering NaNs with 0.0 and cast to float32
-                    ds_standardized = ds_standardized.fillna(0.0).astype(np.float32)
+                    # 3. Cast to float32 (Intentionally omitting .fillna(0.0))
+                    ds_standardized = ds_standardized.astype(np.float32)
 
                     ds_standardized.to_netcdf(temp_filepath)
 
