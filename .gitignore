@@ -17,3 +17,6 @@ index_.html
 SIH26066.pdf
 Data/model_ready_data
 Data/ml_ready_tensors
+Model/Evalu/Data
+Model/Evalu/trained_models
+Data/incois_argo_eval
