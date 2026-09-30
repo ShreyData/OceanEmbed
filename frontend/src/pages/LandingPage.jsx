@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui';
+import { Waves } from 'lucide-react';
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -15,6 +16,19 @@ const LandingPage = () => {
       textAlign: 'center',
       padding: '48px 24px'
     }}>
+      <div style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '64px',
+        height: '64px',
+        borderRadius: '16px',
+        backgroundColor: 'rgba(20, 184, 166, 0.1)',
+        color: 'var(--color-muted-teal)',
+        marginBottom: '20px'
+      }}>
+        <Waves size={36} />
+      </div>
       <h1 style={{
         fontSize: '3rem',
         fontWeight: 700,

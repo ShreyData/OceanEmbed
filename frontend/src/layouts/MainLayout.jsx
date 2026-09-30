@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Waves } from 'lucide-react';
 
 const MainLayout = () => {
   const location = useLocation();
@@ -26,9 +27,13 @@ const MainLayout = () => {
             color: 'var(--color-slate-charcoal)',
             fontSize: '1.25rem',
             fontWeight: 700,
-            letterSpacing: '-0.025em'
+            letterSpacing: '-0.025em',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px'
           }}>
-            OceanEmbed
+            <Waves size={24} color="var(--color-muted-teal)" />
+            <span>OceanEmbed</span>
           </Link>
         </div>
         <nav style={{ display: 'flex', gap: '24px' }}>
