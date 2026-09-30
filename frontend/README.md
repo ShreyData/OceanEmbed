@@ -1,16 +1,79 @@
-# React + Vite
+# OceanEmbed - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Interactive web frontend for **OceanEmbed**, an oceanographic data visualization, analysis, and embedding platform.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Interactive 3D Visualizer**: Real-time 3D ocean data rendering and volume slicing using Plotly and ECharts-GL.
+- **2D & Depth Profile Views**: High-resolution heatmap slices, bathymetric overlays, and vertical depth transect profiles.
+- **Dataset Exploration**: Search, filter, and inspect ocean variables (temperature, salinity, currents, elevation) across coordinate space and time.
+- **Modern Responsive UI**: Built with React 19, Vite, Lucide icons, and custom styling tailored for high-performance scientific visualization.
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Framework**: [React 19](https://react.dev/) + [Vite](https://vite.dev/)
+- **Routing**: [React Router](https://reactrouter.com/)
+- **Visualizations**: [Plotly.js](https://plotly.com/javascript/) / [react-plotly.js](https://github.com/plotly/react-plotly.js), [ECharts](https://echarts.apache.org/) / [echarts-gl](https://github.com/ecomfe/echarts-gl)
+- **Icons**: [Lucide React](https://lucide.dev/)
+- **Linter**: [Oxlint](https://oxc.rs/)
 
-## Expanding the Oxlint configuration
+## Getting Started
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+### Prerequisites
+
+- Node.js (v18 or higher recommended)
+- npm or yarn
+
+### Installation
+
+```bash
+cd frontend
+npm install
+```
+
+### Development Server
+
+Run the development server locally:
+
+```bash
+npm run dev
+```
+
+The app will typically be available at `http://localhost:5173`.
+
+### Production Build
+
+Create an optimized production bundle:
+
+```bash
+npm run build
+```
+
+Preview the production build:
+
+```bash
+npm run preview
+```
+
+## Project Structure
+
+```text
+frontend/
+├── public/              # Static assets
+├── src/
+│   ├── api/             # API clients and endpoints
+│   ├── assets/          # Images and media
+│   ├── components/      # Reusable UI & 2D/3D visualization components
+│   ├── layouts/         # Layout wrappers and navigation
+│   ├── pages/           # Application views (Landing, Input, Explore, Results)
+│   ├── App.jsx          # Top-level routing and state
+│   ├── main.jsx         # Application entry point
+│   └── index.css        # Global design tokens and styles
+├── vercel.json          # Deployment configuration
+├── vite.config.js       # Vite build configuration
+└── package.json         # Dependencies and scripts
+```
+
+## Deployment
+
+Configured for deployment on Vercel with single-page application (SPA) rewrite rules.
