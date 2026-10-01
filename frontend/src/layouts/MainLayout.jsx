@@ -6,8 +6,7 @@ const MainLayout = () => {
   const location = useLocation();
 
   const navLinks = [
-    { path: '/explore', label: 'Explore Data' },
-    { path: '/input', label: 'Input' },
+    { path: '/input', label: 'Upload Data' },
     { path: '/results', label: 'Results' }
   ];
 
