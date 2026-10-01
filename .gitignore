@@ -120,6 +120,12 @@ models/evaluation/checkpoints/
 # Project-only legacy/generated files
 *.pdf
 index_.html
+SIH26066.pdf
+frontend/node_modules/
+backend/venv/
+backend/__pycache__/
+backend/postgres_data/
+*.nc
 
 # Generated scientific data (keep reviewed examples and masks stageable)
 data_pipeline/data/raw/
