@@ -30,8 +30,8 @@ _CHECKPOINT_CANDIDATES = [
 ]
 
 _MASK_CANDIDATES = [
-    "/mnt/Data/SIH 2k26/models/evaluation/data/ocean_mask_3d.nc",
     os.path.join(_BASE, "data", "ocean_mask_3d.nc"),
+    "/mnt/Data/SIH 2k26/models/evaluation/data/ocean_mask_3d.nc",
 ]
 
 # ── Normalization stats (z-score per feature, from normalization_stats.json) ──
@@ -48,16 +48,18 @@ NORM_STATS: dict = {
 
 DEPTH_LEVELS = [0, 5, 10, 20, 30, 50, 75, 100, 125, 150, 200, 300, 500, 700, 1000]
 
-# ── Load surface mask ─────────────────────────────────────────────────────────
-def _load_surface_mask() -> np.ndarray:
+# ── Load surface mask and 3D bathymetry mask ─────────────────────────────
+def _load_masks() -> tuple[np.ndarray, np.ndarray]:
     for p in _MASK_CANDIDATES:
         if os.path.exists(p):
             ds = xr.open_dataset(p)
-            # depth index 0 → surface level
-            mask = ds["ocean_mask"].values[0].astype(np.float32)  # (100, 240)
+            # Full 3D ocean mask: shape (15, 100, 240)
+            mask_3d = ds["ocean_mask"].values.astype(np.float32)
+            # 2D surface mask (depth level 0, 0m): shape (100, 240)
+            surf_mask = mask_3d[0].copy()
             ds.close()
-            logger.info(f"Surface mask loaded from {p} — shape {mask.shape}")
-            return mask
+            logger.info(f"3D ocean mask loaded from {p} — shape {mask_3d.shape}")
+            return surf_mask, mask_3d
     raise FileNotFoundError(f"Ocean mask not found in any of: {_MASK_CANDIDATES}")
 
 
@@ -81,16 +83,17 @@ def _load_model() -> OceanEmbed:
 
 
 # ── Module-level singletons (loaded once at import / server startup) ──────────
-logger.info("Loading OceanEmbed model and surface mask...")
+logger.info("Loading OceanEmbed model and ocean masks...")
 try:
     model: OceanEmbed = _load_model()
-    surface_mask: np.ndarray = _load_surface_mask()
+    surface_mask, ocean_mask_3d = _load_masks()
     _model_loaded = True
-    logger.info("Model and mask ready.")
+    logger.info("Model, surface mask, and 3D bathymetry mask ready.")
 except Exception as exc:
     logger.error(f"Failed to load model/mask: {exc}")
     model = None
     surface_mask = None
+    ocean_mask_3d = None
     _model_loaded = False
 
 
@@ -102,7 +105,7 @@ def run_inference(
     """Run OceanEmbed forward pass.
 
     Returns:
-        pred_celsius : np.ndarray (15, 100, 240) in real °C, land pixels = NaN
+        pred_celsius : np.ndarray (15, 100, 240) in real °C, with 3D bathymetry land/seabed = NaN
         latency_ms   : float
     """
     if model is None:
@@ -123,9 +126,12 @@ def run_inference(
     thetao_std  = NORM_STATS["thetao"]["std"]
     pred_celsius = pred_norm.squeeze(0).numpy() * thetao_std + thetao_mean  # (15, 100, 240)
 
-    # Mask land pixels (surface_mask == 0) → NaN
-    if surface_mask is not None:
-        land = surface_mask == 0  # (100, 240)
+    # Apply full 3D ocean mask: at each depth d, seabed & land pixels (ocean_mask_3d == 0) → NaN
+    if ocean_mask_3d is not None:
+        land_3d = (ocean_mask_3d == 0)  # (15, 100, 240) boolean mask
+        pred_celsius[land_3d] = np.nan
+    elif surface_mask is not None:
+        land = (surface_mask == 0)
         pred_celsius[:, land] = np.nan
 
     return pred_celsius, latency_ms

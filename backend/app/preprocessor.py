@@ -123,22 +123,35 @@ def preprocess_nc(
                 raise HTTPException(400, f"Cannot reshape variable '{var}' to (11, 100, 240).")
         channel_arrays.append(arr)
 
+    # ── Extract target date (11th time step) ──────────────────────────────────
+    target_date = None
+    try:
+        if "time" in ds.coords and len(ds["time"]) >= 11:
+            raw_t = ds["time"].values[10]
+            import pandas as pd
+            target_date = str(pd.to_datetime(raw_t).strftime("%Y-%m-%d"))
+    except Exception as e:
+        logger.warning(f"Could not parse target_date from NetCDF time axis: {e}")
+
     data = np.stack(channel_arrays, axis=1)  # (11, 7, 100, 240)
     ds.close()
 
-    # ── 7. Apply surface mask (land → 0) ─────────────────────────────────────
+    # ── 7. Apply surface mask (land → NaN, exactly like ds.where(official_mask)) ──
     land = (surface_mask == 0)  # (100, 240) boolean
     for c in range(7):
-        ch = data[:, c, :, :]        # (11, 100, 240)
-        ch = np.where(np.isnan(ch), 0.0, ch)   # NaN → 0
-        ch[:, land] = 0.0            # land pixels → 0
+        ch = data[:, c, :, :]
+        ch[:, land] = np.nan                 # land pixels → NaN (matching training pipeline)
         data[:, c, :, :] = ch
 
-    # ── 8. Z-score normalise each channel ────────────────────────────────────
+    # ── 8. Z-score normalise & fillna(0.0) (matching build_validation_features.py) ──
     for c, var in enumerate(CHANNEL_ORDER):
         mean = norm_stats[var]["mean"]
         std  = norm_stats[var]["std"]
         data[:, c, :, :] = (data[:, c, :, :] - mean) / std
+
+    # In training pipeline: ((ds - mean) / std).fillna(0.0)
+    # Over land (NaN), (NaN - mean)/std is NaN, then filled with 0.0
+    data = np.nan_to_num(data, nan=0.0).astype(np.float32)
 
     # ── 9. Append mask as 8th channel → (11, 8, 100, 240) ────────────────────
     mask_channel = np.broadcast_to(
@@ -151,5 +164,5 @@ def preprocess_nc(
     x_history = data[0:10]   # (10, 8, 100, 240)
     x_target  = data[10]     # (8, 100, 240)
 
-    logger.info(f"Preprocessed: history {x_history.shape}, target {x_target.shape}")
-    return x_history, x_target
+    logger.info(f"Preprocessed: history {x_history.shape}, target {x_target.shape}, target_date={target_date}")
+    return x_history, x_target, target_date
