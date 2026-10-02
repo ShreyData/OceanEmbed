@@ -1,0 +1,124 @@
+[
+  {
+    "id": "demo_2023_10_18",
+    "filename": "demo_2023_10_18.nc",
+    "path": "/demos/demo_2023_10_18.nc",
+    "season": "Autumn Post-Monsoon — High ARGO Density (Oct 2023)",
+    "target_date": "2023-10-18",
+    "year": 2023,
+    "month": 10,
+    "size_mb": 2.67,
+    "highlight": true
+  },
+  {
+    "id": "demo_2022_09_23",
+    "filename": "demo_2022_09_23.nc",
+    "path": "/demos/demo_2022_09_23.nc",
+    "season": "Late Summer Monsoon — High ARGO Density (Sep 2022)",
+    "target_date": "2022-09-23",
+    "year": 2022,
+    "month": 9,
+    "size_mb": 2.64,
+    "highlight": true
+  },
+  {
+    "id": "demo_2022_01_11",
+    "filename": "demo_2022_01_11.nc",
+    "path": "/demos/demo_2022_01_11.nc",
+    "season": "Winter Monsoon (Jan 2022)",
+    "target_date": "2022-01-11",
+    "year": 2022,
+    "month": 1,
+    "size_mb": 2.64
+  },
+  {
+    "id": "demo_2022_04_11",
+    "filename": "demo_2022_04_11.nc",
+    "path": "/demos/demo_2022_04_11.nc",
+    "season": "Spring Pre-Monsoon (Apr 2022)",
+    "target_date": "2022-04-11",
+    "year": 2022,
+    "month": 4,
+    "size_mb": 2.66
+  },
+  {
+    "id": "demo_2022_07_11",
+    "filename": "demo_2022_07_11.nc",
+    "path": "/demos/demo_2022_07_11.nc",
+    "season": "Southwest Summer Monsoon (Jul 2022)",
+    "target_date": "2022-07-11",
+    "year": 2022,
+    "month": 7,
+    "size_mb": 2.62
+  },
+  {
+    "id": "demo_2022_10_11",
+    "filename": "demo_2022_10_11.nc",
+    "path": "/demos/demo_2022_10_11.nc",
+    "season": "Post-Monsoon Transition (Oct 2022)",
+    "target_date": "2022-10-11",
+    "year": 2022,
+    "month": 10,
+    "size_mb": 2.66
+  },
+  {
+    "id": "demo_2023_02_11",
+    "filename": "demo_2023_02_11.nc",
+    "path": "/demos/demo_2023_02_11.nc",
+    "season": "Late Winter Stratification (Feb 2023)",
+    "target_date": "2023-02-11",
+    "year": 2023,
+    "month": 2,
+    "size_mb": 2.65
+  },
+  {
+    "id": "demo_2023_05_11",
+    "filename": "demo_2023_05_11.nc",
+    "path": "/demos/demo_2023_05_11.nc",
+    "season": "Pre-Monsoon Peak Warming (May 2023)",
+    "target_date": "2023-05-11",
+    "year": 2023,
+    "month": 5,
+    "size_mb": 2.66
+  },
+  {
+    "id": "demo_2023_08_11",
+    "filename": "demo_2023_08_11.nc",
+    "path": "/demos/demo_2023_08_11.nc",
+    "season": "Mid-Monsoon Wind Mixing (Aug 2023)",
+    "target_date": "2023-08-11",
+    "year": 2023,
+    "month": 8,
+    "size_mb": 2.63
+  },
+  {
+    "id": "demo_2023_11_11",
+    "filename": "demo_2023_11_11.nc",
+    "path": "/demos/demo_2023_11_11.nc",
+    "season": "Northeast Monsoon (Nov 2023)",
+    "target_date": "2023-11-11",
+    "year": 2023,
+    "month": 11,
+    "size_mb": 2.66
+  },
+  {
+    "id": "demo_2024_03_11",
+    "filename": "demo_2024_03_11.nc",
+    "path": "/demos/demo_2024_03_11.nc",
+    "season": "Spring Warming (Mar 2024)",
+    "target_date": "2024-03-11",
+    "year": 2024,
+    "month": 3,
+    "size_mb": 2.64
+  },
+  {
+    "id": "demo_2024_10_11",
+    "filename": "demo_2024_10_11.nc",
+    "path": "/demos/demo_2024_10_11.nc",
+    "season": "Autumn Post-Monsoon (Oct 2024)",
+    "target_date": "2024-10-11",
+    "year": 2024,
+    "month": 10,
+    "size_mb": 2.67
+  }
+]
