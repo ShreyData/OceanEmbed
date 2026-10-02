@@ -29,13 +29,13 @@ app = FastAPI(
     description="Subsurface ocean temperature reconstruction with multi-source GLORYS/ARGO benchmarking (SIH 2026 — INCOIS)",
     version="2.1.0",
 )
-
+'''
 ALLOWED_ORIGINS = [
     "https://ocean-embed.masir-projects.me",
     "http://localhost:5173",
     "http://localhost:3000",
 ]
-
+'''
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
