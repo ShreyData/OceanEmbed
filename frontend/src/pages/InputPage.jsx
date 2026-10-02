@@ -18,7 +18,10 @@ import {
   Check,
   Sliders,
   Info,
+  Sparkles,
+  ArrowRight,
 } from 'lucide-react';
+import logoImg from '../assets/logo_tight.png';
 
 const REQUIRED_VARS = [
   { key: 'analysed_sst', name: 'SST (Sea Surface Temperature)', unit: '°C' },
@@ -42,6 +45,7 @@ const DEFAULT_DEMOS = [
     size_mb: 2.67,
     argo_float_count: 12,
     argo_points: 117,
+    recommended: true,
   },
   {
     id: 'demo_2022_09_23',
@@ -54,6 +58,7 @@ const DEFAULT_DEMOS = [
     size_mb: 2.64,
     argo_float_count: 14,
     argo_points: 132,
+    recommended: true,
   },
   {
     id: 'demo_2022_01_11',
@@ -207,7 +212,6 @@ export default function InputPage() {
       .then((r) => (r.ok ? r.json() : null))
       .then((manifest) => {
         if (manifest && Array.isArray(manifest) && manifest.length > 0) {
-          // Merge with DEFAULT_DEMOS to retain rich scientific regime metadata
           const merged = manifest.map((m) => {
             const def = DEFAULT_DEMOS.find((d) => d.target_date === m.target_date || d.id === m.id);
             return { ...m, ...(def || {}) };
@@ -275,7 +279,6 @@ export default function InputPage() {
       const res = await fetch(demoItem.path);
       const contentType = res.headers.get('content-type') || '';
       if (!res.ok || contentType.includes('text/html')) {
-        // Direct server-side execution path if static asset rewritten by SPA
         setFile(null);
         setStatus('idle');
         return;
@@ -294,8 +297,9 @@ export default function InputPage() {
   };
 
   /* ── Run prediction ─────────────────────────────────────────────────── */
-  const handleRun = async () => {
-    if (!file && !selectedDemo) {
+  const handleRun = async (overrideDemo = null) => {
+    const activeDemo = overrideDemo || selectedDemo;
+    if (!file && !activeDemo) {
       setErrorMsg('Please select a benchmark dataset or upload a NetCDF file first.');
       setStatus('error');
       return;
@@ -312,7 +316,7 @@ export default function InputPage() {
     }, 450);
 
     try {
-      await predictFromNC(file, selectedDemo?.id, selectedDemo?.target_date);
+      await predictFromNC(file, activeDemo?.id, activeDemo?.target_date);
       clearInterval(stepTimer);
       navigate('/results');
     } catch (err) {
@@ -341,8 +345,8 @@ export default function InputPage() {
         textAlign: 'center',
       }}>
         <div style={{
-          width: 58,
-          height: 58,
+          width: 60,
+          height: 60,
           borderRadius: 14,
           background: '#0c4a6e',
           display: 'inline-flex',
@@ -351,7 +355,7 @@ export default function InputPage() {
           marginBottom: 16,
           boxShadow: '0 4px 16px rgba(2, 132, 199, 0.3)',
         }}>
-          <img src="/logo.png" alt="Loading" style={{ height: 36, width: 'auto', objectFit: 'contain' }} />
+          <img src={logoImg} alt="Loading" style={{ height: 38, width: 'auto', objectFit: 'contain' }} />
         </div>
 
         <h2 style={{ fontSize: '1.35rem', color: '#0c4a6e', margin: '0 0 6px', fontWeight: 800 }}>
@@ -413,14 +417,14 @@ export default function InputPage() {
 
   /* ── Main Production View ── */
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
       {/* Top Header & Context */}
       <div style={{
         background: '#ffffff',
         border: '1px solid #e2e8f0',
         borderRadius: 12,
-        padding: '20px 24px',
+        padding: '18px 24px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -545,6 +549,106 @@ export default function InputPage() {
         </button>
       </div>
 
+      {/* ── TOP STICKY EXECUTION BAR (ALWAYS IN SIGHT, ZERO SCROLL NEEDED) ── */}
+      <div style={{
+        position: 'sticky',
+        top: 68,
+        zIndex: 35,
+        background: '#ffffff',
+        border: '2px solid #0284c7',
+        borderRadius: 12,
+        padding: '14px 20px',
+        boxShadow: '0 6px 20px rgba(2, 132, 199, 0.15)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: 14,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: '280px' }}>
+          <div style={{
+            background: '#e0f2fe',
+            border: '1px solid #bae6fd',
+            borderRadius: 8,
+            padding: '8px 12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}>
+            <Calendar size={18} color="#0284c7" />
+            <div>
+              <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: '#0369a1' }}>
+                Active Target Date
+              </div>
+              <div style={{ fontSize: '0.98rem', fontWeight: 800, color: '#0c4a6e', fontFamily: 'monospace' }}>
+                {selectedDemo?.target_date || 'Custom'}
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontSize: '0.94rem', fontWeight: 700, color: '#0c4a6e' }}>
+              {selectedDemo?.season || 'Custom NetCDF Matrix'}
+            </div>
+            <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 2, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span>11 Daily Surface Fields (7 Variables)</span>
+              <span>·</span>
+              <span>15 Depth Layers (0–1000m)</span>
+              {selectedDemo?.argo_float_count && (
+                <>
+                  <span>·</span>
+                  <span style={{ color: '#059669', fontWeight: 600 }}>
+                    {selectedDemo.argo_float_count} ARGO Floats Collocated
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* PRIMARY RUN BUTTON (Directly at top, instant 1-click) */}
+        <button
+          onClick={() => handleRun()}
+          disabled={isLoadingDemo}
+          style={{
+            background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: 8,
+            padding: '12px 24px',
+            fontSize: '0.96rem',
+            fontWeight: 800,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            boxShadow: '0 4px 14px rgba(2, 132, 199, 0.4)',
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap',
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.transform = 'translateY(-1px)';
+            e.currentTarget.style.boxShadow = '0 6px 18px rgba(2, 132, 199, 0.5)';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.transform = 'none';
+            e.currentTarget.style.boxShadow = '0 4px 14px rgba(2, 132, 199, 0.4)';
+          }}
+        >
+          <Play size={18} fill="#ffffff" />
+          <span>Run 15-Layer Reconstruction</span>
+          <span style={{
+            fontSize: '0.74rem',
+            background: 'rgba(255,255,255,0.22)',
+            padding: '2px 7px',
+            borderRadius: 4,
+            fontWeight: 700,
+          }}>
+            ~24 ms
+          </span>
+        </button>
+      </div>
+
       {/* ── TAB 1: CURATED SEASONAL BENCHMARK DATASETS ── */}
       {activeTab === 'benchmark' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -556,6 +660,10 @@ export default function InputPage() {
             alignItems: 'center',
             flexWrap: 'wrap',
             gap: 12,
+            background: '#ffffff',
+            padding: '10px 16px',
+            borderRadius: 8,
+            border: '1px solid #e2e8f0',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#475569' }}>
@@ -570,10 +678,11 @@ export default function InputPage() {
                     color: selectedYear === yr ? '#ffffff' : '#475569',
                     border: selectedYear === yr ? '1px solid #0284c7' : '1px solid #cbd5e1',
                     borderRadius: 6,
-                    padding: '4px 12px',
-                    fontSize: '0.78rem',
+                    padding: '5px 14px',
+                    fontSize: '0.8rem',
                     fontWeight: 600,
                     cursor: 'pointer',
+                    transition: 'all 0.12s ease',
                   }}
                 >
                   {yr === 'ALL' ? 'All Seasons (12)' : `${yr} Cycle`}
@@ -582,7 +691,7 @@ export default function InputPage() {
             </div>
 
             <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
-              Showing {filteredDemos.length} validated benchmark scenarios collocated with in-situ ARGO truth
+              Click any scenario card below to select or click <strong>"Run"</strong> directly on the card
             </div>
           </div>
 
@@ -598,12 +707,6 @@ export default function InputPage() {
                 <div
                   key={d.id || d.target_date}
                   onClick={() => loadDemoByPath(d)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      loadDemoByPath(d);
-                    }
-                  }}
                   tabIndex={0}
                   role="button"
                   aria-pressed={isSelected}
@@ -616,7 +719,7 @@ export default function InputPage() {
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
-                    boxShadow: isSelected ? '0 4px 14px rgba(2, 132, 199, 0.15)' : '0 1px 3px rgba(0,0,0,0.03)',
+                    boxShadow: isSelected ? '0 4px 14px rgba(2, 132, 199, 0.18)' : '0 1px 3px rgba(0,0,0,0.03)',
                     transition: 'all 0.15s ease',
                     position: 'relative',
                   }}
@@ -650,7 +753,7 @@ export default function InputPage() {
                           gap: 4,
                         }}>
                           <Check size={12} />
-                          Active
+                          Selected
                         </span>
                       ) : (
                         <span style={{
@@ -668,7 +771,7 @@ export default function InputPage() {
 
                     {/* Season / Monsoonal Title */}
                     <div style={{
-                      fontSize: '0.92rem',
+                      fontSize: '0.94rem',
                       fontWeight: 700,
                       color: '#0c4a6e',
                       lineHeight: 1.3,
@@ -682,91 +785,64 @@ export default function InputPage() {
                       fontSize: '0.78rem',
                       color: '#64748b',
                       lineHeight: 1.45,
-                      margin: '0 0 12px',
+                      margin: '0 0 10px',
                     }}>
                       {d.regime || 'Spatiotemporal surface matrix collocated with INCOIS ARGO floats.'}
                     </p>
                   </div>
 
-                  {/* Bottom Verification Anchor Badges */}
-                  <div style={{
-                    borderTop: '1px solid #f1f5f9',
-                    paddingTop: 8,
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    fontSize: '0.72rem',
-                    color: '#475569',
-                  }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
-                      <ShieldCheck size={13} color="#059669" />
-                      {d.argo_float_count || 12} ARGO Floats Collocated
-                    </span>
-                    <span style={{ color: '#0284c7', fontWeight: 600 }}>
-                      GLORYS12V1 Truth
-                    </span>
+                  {/* Verification Badges + Direct 1-Click Action */}
+                  <div>
+                    <div style={{
+                      borderTop: '1px solid #f1f5f9',
+                      paddingTop: 8,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      fontSize: '0.72rem',
+                      color: '#475569',
+                      marginBottom: 8,
+                    }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+                        <ShieldCheck size={13} color="#059669" />
+                        {d.argo_float_count || 12} ARGO Floats
+                      </span>
+                      <span style={{ color: '#0284c7', fontWeight: 600 }}>
+                        GLORYS12V1 Truth
+                      </span>
+                    </div>
+
+                    {/* Direct Run Action on the Card */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        loadDemoByPath(d);
+                        handleRun(d);
+                      }}
+                      style={{
+                        width: '100%',
+                        background: isSelected ? '#0284c7' : '#f8fafc',
+                        color: isSelected ? '#ffffff' : '#0369a1',
+                        border: isSelected ? '1px solid #0284c7' : '1px solid #cbd5e1',
+                        borderRadius: 6,
+                        padding: '6px 12px',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6,
+                        transition: 'all 0.12s ease',
+                      }}
+                    >
+                      <Play size={12} fill={isSelected ? '#ffffff' : '#0369a1'} />
+                      <span>{isSelected ? 'Run This Dataset' : 'Select & Run'}</span>
+                    </button>
                   </div>
                 </div>
               );
             })}
-          </div>
-
-          {/* Active Benchmark Execution Bar */}
-          <div style={{
-            background: '#ffffff',
-            border: '1.5px solid #bae6fd',
-            borderRadius: 12,
-            padding: '20px 24px',
-            boxShadow: '0 4px 18px rgba(2, 132, 199, 0.08)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: 16,
-          }}>
-            <div>
-              <div style={{ fontSize: '0.74rem', fontWeight: 700, textTransform: 'uppercase', color: '#0369a1', letterSpacing: '0.04em' }}>
-                Selected Benchmark Scenario
-              </div>
-              <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0c4a6e', marginTop: 2 }}>
-                {selectedDemo?.season || 'Autumn Post-Monsoon'} ({selectedDemo?.target_date})
-              </div>
-              <div style={{ fontSize: '0.82rem', color: '#475569', marginTop: 2 }}>
-                11 Consecutive Daily Observation Fields (SST, SSS, SLA, Winds U/V, Currents U/V) · 15 Target Depths (0–1000m)
-              </div>
-            </div>
-
-            <button
-              onClick={handleRun}
-              disabled={isLoadingDemo}
-              style={{
-                background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: 8,
-                padding: '13px 26px',
-                fontSize: '0.96rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                boxShadow: '0 4px 14px rgba(2, 132, 199, 0.35)',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <Play size={18} fill="#ffffff" />
-              <span>Run OceanEmbed Reconstruction</span>
-              <span style={{
-                fontSize: '0.72rem',
-                background: 'rgba(255,255,255,0.2)',
-                padding: '2px 6px',
-                borderRadius: 4,
-                marginLeft: 4,
-              }}>
-                ~24 ms
-              </span>
-            </button>
           </div>
         </div>
       )}
@@ -861,14 +937,14 @@ export default function InputPage() {
                 </div>
 
                 <button
-                  onClick={handleRun}
+                  onClick={() => handleRun()}
                   style={{
                     background: '#0284c7',
                     color: '#ffffff',
                     border: 'none',
                     borderRadius: 6,
-                    padding: '8px 16px',
-                    fontSize: '0.86rem',
+                    padding: '9px 18px',
+                    fontSize: '0.88rem',
                     fontWeight: 700,
                     cursor: 'pointer',
                     display: 'flex',

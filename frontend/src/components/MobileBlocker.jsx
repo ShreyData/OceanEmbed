@@ -10,6 +10,7 @@ import {
   Database,
   ExternalLink,
 } from 'lucide-react';
+import logoImg from '../assets/logo_tight.png';
 
 export default function MobileBlocker({ children }) {
   const [isMobile, setIsMobile] = useState(false);
@@ -83,7 +84,7 @@ export default function MobileBlocker({ children }) {
         borderBottom: '1px solid #e2e8f0',
       }}>
         <img
-          src="/logo.png"
+          src={logoImg}
           alt="OceanEmbed Logo"
           style={{
             height: 42,

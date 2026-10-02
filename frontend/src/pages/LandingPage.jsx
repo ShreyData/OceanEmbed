@@ -13,6 +13,7 @@ import {
   Database,
   TrendingDown,
 } from 'lucide-react';
+import logoImg from '../assets/logo_tight.png';
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -48,7 +49,7 @@ export default function LandingPage() {
             zIndex: 0,
           }} />
           <img
-            src="/logo.png"
+            src={logoImg}
             alt="OceanEmbed Icon"
             style={{
               height: 72,

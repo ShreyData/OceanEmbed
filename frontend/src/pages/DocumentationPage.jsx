@@ -24,6 +24,7 @@ import {
   X,
   Sparkles,
 } from 'lucide-react';
+import logoImg from '../assets/logo_tight.png';
 
 const SECTIONS = [
   { id: 'overview', title: 'System Overview & Purpose', icon: Compass },
@@ -106,7 +107,7 @@ ds.to_netcdf('custom_ocean_11day.nc', encoding=encoding)`;
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <img
-            src="/logo.png"
+            src={logoImg}
             alt="OceanEmbed Logo"
             style={{ height: 48, width: 'auto', maxHeight: 48, borderRadius: 8, objectFit: 'contain', background: '#ffffff', padding: '2px 6px', border: '1px solid #7dd3fc' }}
           />
