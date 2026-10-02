@@ -147,3 +147,7 @@ data_pipeline/data/regions/gujarat/*
 # Keep curated demo data files stageable
 !data_pipeline/examples/inputs_demo/
 !data_pipeline/examples/inputs_demo/*.nc
+!frontend/public/demos/
+!frontend/public/demos/*.nc
+!frontend/public/*.nc
+

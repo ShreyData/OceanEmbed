@@ -26,9 +26,17 @@ export async function checkHealth() {
   return res.json();
 }
 
-export async function predictFromNC(file) {
+export async function predictFromNC(file, demoId = null, targetDate = null) {
   const formData = new FormData();
-  formData.append('file', file);
+  if (file) {
+    formData.append('file', file);
+  }
+  if (demoId) {
+    formData.append('demo_id', demoId);
+  }
+  if (targetDate) {
+    formData.append('target_date', targetDate);
+  }
   const res = await fetch(`${API_BASE}/predict`, {
     method: 'POST',
     body: formData,

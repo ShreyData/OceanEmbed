@@ -51,14 +51,17 @@ export default function LandingPage() {
             src="/logo.png"
             alt="OceanEmbed Icon"
             style={{
-              width: 84,
-              height: 84,
-              borderRadius: 20,
+              height: 72,
+              width: 'auto',
+              maxHeight: 72,
+              borderRadius: 12,
               objectFit: 'contain',
               position: 'relative',
               zIndex: 1,
-              boxShadow: '0 8px 24px rgba(2, 132, 199, 0.35)',
-              border: '2px solid rgba(56, 189, 248, 0.5)',
+              boxShadow: '0 8px 24px rgba(2, 132, 199, 0.25)',
+              background: '#ffffff',
+              padding: '6px 14px',
+              border: '1.5px solid rgba(56, 189, 248, 0.5)',
             }}
           />
         </div>

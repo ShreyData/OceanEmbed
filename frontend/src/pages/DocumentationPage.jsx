@@ -108,7 +108,7 @@ ds.to_netcdf('custom_ocean_11day.nc', encoding=encoding)`;
           <img
             src="/logo.png"
             alt="OceanEmbed Logo"
-            style={{ width: 52, height: 52, borderRadius: 10, objectFit: 'contain', border: '1px solid #7dd3fc' }}
+            style={{ height: 48, width: 'auto', maxHeight: 48, borderRadius: 8, objectFit: 'contain', background: '#ffffff', padding: '2px 6px', border: '1px solid #7dd3fc' }}
           />
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>

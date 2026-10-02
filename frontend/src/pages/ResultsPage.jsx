@@ -17,7 +17,7 @@ import {
   AlertTriangle,
   MapPin,
   TrendingUp,
-  Award,
+  ShieldCheck,
   Sparkles,
   Info,
   Download,
@@ -1399,7 +1399,7 @@ export default function ResultsPage() {
         }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <Award size={22} color="var(--color-ocean-cyan)" />
+              <ShieldCheck size={22} color="var(--color-ocean-cyan)" />
               <h2 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--color-ocean-abyss)', fontWeight: 700 }}>
                 Triple Benchmark: Model vs GLORYS12V1 vs INCOIS ARGO
               </h2>
@@ -1502,32 +1502,39 @@ export default function ResultsPage() {
           </div>
         </div>
 
-        {/* Winner Banner */}
+        {/* Operational In-Situ Verification Assessment */}
         {m.model_vs_argo_rmse != null && m.glorys_vs_argo_rmse != null && (() => {
-          const modelWins = m.model_vs_argo_rmse < m.glorys_vs_argo_rmse;
-          const diff = Math.abs(m.glorys_vs_argo_rmse - m.model_vs_argo_rmse).toFixed(3);
+          const delta = (m.glorys_vs_argo_rmse - m.model_vs_argo_rmse).toFixed(3);
+          const isLowerError = m.model_vs_argo_rmse <= m.glorys_vs_argo_rmse;
           return (
             <div style={{
-              background: modelWins
-                ? 'linear-gradient(90deg, #1e40af 0%, #0369a1 100%)'
-                : 'linear-gradient(90deg, #065f46 0%, #0d9488 100%)',
+              background: '#0c4a6e',
+              border: '1px solid #0284c7',
               borderRadius: 'var(--radius-lg)',
-              padding: '14px 22px',
+              padding: '16px 20px',
               display: 'flex',
               alignItems: 'center',
-              gap: 14,
-              color: '#fff',
+              gap: 16,
+              color: '#ffffff',
             }}>
-              <span style={{ fontSize: 26 }}>{modelWins ? '🏆' : '📊'}</span>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: '1rem' }}>
-                  {modelWins
-                    ? `OceanEmbed outperforms GLORYS by ${diff}°C RMSE against ARGO in-situ truth`
-                    : `GLORYS outperforms OceanEmbed by ${diff}°C RMSE against ARGO in-situ truth`}
+              <div style={{
+                background: 'rgba(2, 132, 199, 0.25)',
+                border: '1px solid rgba(56, 189, 248, 0.4)',
+                borderRadius: 8,
+                padding: '8px 10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <ShieldCheck size={24} color="#38bdf8" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: '0.98rem', letterSpacing: '-0.01em' }}>
+                  Operational In-Situ Float Sounding Verification
                 </div>
-                <div style={{ fontSize: '0.8rem', opacity: 0.85, marginTop: 2 }}>
-                  Evaluated at {m.argo_float_count} ARGO float stations · {m.argo_sounding_points} collocated in-situ observations
-                  · Basin-wide GLORYS Agreement (Model vs GLORYS RMSE): {m.model_vs_glorys_rmse}°C
+                <div style={{ fontSize: '0.84rem', color: '#bae6fd', marginTop: 3, lineHeight: 1.5 }}>
+                  Collocated against <strong>{m.argo_float_count} autonomous INCOIS ARGO profiling floats</strong> across {m.argo_sounding_points} vertical sounding levels. 
+                  Model root-mean-square error is <strong>{m.model_vs_argo_rmse}°C</strong> compared to GLORYS12V1's <strong>{m.glorys_vs_argo_rmse}°C</strong> (baseline delta: {isLowerError ? `-${delta}°C error reduction` : `+${Math.abs(delta)}°C`}).
                 </div>
               </div>
             </div>

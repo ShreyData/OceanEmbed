@@ -48,11 +48,37 @@ def preprocess_nc(
     """
     warnings.filterwarnings("ignore")
 
-    # ── 1. Open ───────────────────────────────────────────────────────────────
+    # ── 1. Validate File Format & Open ────────────────────────────────────────
     try:
-        ds = xr.open_dataset(nc_path)
+        with open(nc_path, "rb") as f_head:
+            header = f_head.read(64)
+            if b"<html" in header.lower() or b"<!doctype" in header.lower():
+                raise HTTPException(
+                    400,
+                    "Invalid file format: received an HTML web page instead of a binary NetCDF (.nc) file. "
+                    "This occurs when demo files are missing from the frontend deployment (404 rewrite). "
+                    "Please ensure demo NetCDF files are pushed to git and deployed on Vercel."
+                )
+    except HTTPException:
+        raise
     except Exception as exc:
-        raise HTTPException(400, f"Cannot open NetCDF file: {exc}")
+        raise HTTPException(400, f"Unable to read file: {exc}")
+
+    ds = None
+    last_err = None
+    for eng in ["netcdf4", "h5netcdf", "scipy", None]:
+        try:
+            if eng:
+                ds = xr.open_dataset(nc_path, engine=eng)
+            else:
+                ds = xr.open_dataset(nc_path)
+            if ds is not None:
+                break
+        except Exception as e:
+            last_err = e
+
+    if ds is None:
+        raise HTTPException(400, f"Cannot open NetCDF file: {last_err}")
 
     # ── 2. Validate variables ─────────────────────────────────────────────────
     missing = [v for v in CHANNEL_ORDER if v not in ds.data_vars]

@@ -36,12 +36,12 @@ const MainLayout = () => {
             src="/logo.png" 
             alt="OceanEmbed Logo" 
             style={{ 
-              width: 36, 
-              height: 36, 
-              borderRadius: 8, 
+              height: 38, 
+              width: 'auto',
+              maxHeight: 38,
+              borderRadius: 6, 
               objectFit: 'contain',
-              boxShadow: '0 2px 8px rgba(6, 182, 212, 0.35)',
-              border: '1px solid rgba(6, 182, 212, 0.4)'
+              background: '#ffffff',
             }} 
           />
           <div>
