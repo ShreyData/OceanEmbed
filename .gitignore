@@ -150,4 +150,6 @@ data_pipeline/data/regions/gujarat/*
 !frontend/public/demos/
 !frontend/public/demos/*.nc
 !frontend/public/*.nc
+custom_test_*.nc
+frontend/public/custom_test_*.nc
 

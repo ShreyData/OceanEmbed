@@ -20,6 +20,8 @@ import {
   Info,
   Sparkles,
   ArrowRight,
+  X,
+  Trash2,
 } from 'lucide-react';
 import logoImg from '../assets/logo_tight.png';
 
@@ -45,7 +47,6 @@ const DEFAULT_DEMOS = [
     size_mb: 2.67,
     argo_float_count: 12,
     argo_points: 117,
-    recommended: true,
   },
   {
     id: 'demo_2022_09_23',
@@ -58,7 +59,6 @@ const DEFAULT_DEMOS = [
     size_mb: 2.64,
     argo_float_count: 14,
     argo_points: 132,
-    recommended: true,
   },
   {
     id: 'demo_2022_01_11',
@@ -199,12 +199,13 @@ export default function InputPage() {
   const [selectedYear, setSelectedYear] = useState('ALL'); // ALL | 2022 | 2023 | 2024
   const [demos, setDemos] = useState(DEFAULT_DEMOS);
   const [selectedDemo, setSelectedDemo] = useState(DEFAULT_DEMOS[0]);
-  const [file, setFile] = useState(null);
+  
+  // Custom uploaded file ONLY (strictly null until user uploads/drops a file)
+  const [customFile, setCustomFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [status, setStatus] = useState('idle'); // idle | loading | error
   const [loadingStep, setLoadingStep] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
-  const [isLoadingDemo, setIsLoadingDemo] = useState(false);
 
   // Sync demo manifest if available
   useEffect(() => {
@@ -222,34 +223,16 @@ export default function InputPage() {
       .catch(() => {});
   }, []);
 
-  // Pre-load default demo selection
-  useEffect(() => {
-    if (!file && DEFAULT_DEMOS.length > 0) {
-      loadDemoByPath(DEFAULT_DEMOS[0]);
-    }
-  }, []);
-
-  /* ── File validation ─────────────────────────────────────────────────── */
-  const handleFile = useCallback((f, demoMeta = null) => {
+  /* ── Custom File Validation ───────────────────────────────────────────── */
+  const handleCustomFile = useCallback((f) => {
     if (!f) return;
     if (!f.name.toLowerCase().endsWith('.nc')) {
       setErrorMsg('Invalid file format. Only standard NetCDF (.nc) files are supported.');
       setStatus('error');
       return;
     }
-    setFile(f);
-    if (demoMeta) {
-      setSelectedDemo(demoMeta);
-    } else {
-      setSelectedDemo({
-        id: 'custom_upload',
-        filename: f.name,
-        season: 'Custom Uploaded Observation Matrix',
-        regime: 'User Provided Spatiotemporal NetCDF Matrix',
-        target_date: 'Custom Temporal Window',
-        size_mb: Math.round((f.size / (1024 * 1024)) * 100) / 100,
-      });
-    }
+    setCustomFile(f);
+    setActiveTab('upload');
     setErrorMsg('');
     setStatus('idle');
   }, []);
@@ -265,44 +248,39 @@ export default function InputPage() {
     setIsDragging(false);
     const f = e.dataTransfer.files?.[0];
     if (f) {
-      handleFile(f, null);
-      setActiveTab('upload');
+      handleCustomFile(f);
     }
   };
 
-  /* ── Load specific demo file ────────────────────────────────────────── */
-  const loadDemoByPath = async (demoItem) => {
-    setIsLoadingDemo(true);
-    setErrorMsg('');
+  /* ── Benchmark Selection ────────────────────────────────────────────── */
+  const selectBenchmark = (demoItem) => {
     setSelectedDemo(demoItem);
-    try {
-      const res = await fetch(demoItem.path);
-      const contentType = res.headers.get('content-type') || '';
-      if (!res.ok || contentType.includes('text/html')) {
-        setFile(null);
-        setStatus('idle');
-        return;
-      }
-      const blob = await res.blob();
-      const demoFile = new File([blob], demoItem.filename, {
-        type: 'application/x-netcdf',
-      });
-      handleFile(demoFile, demoItem);
-    } catch (err) {
-      setFile(null);
-      setStatus('idle');
-    } finally {
-      setIsLoadingDemo(false);
-    }
+    setErrorMsg('');
+    setStatus('idle');
   };
 
   /* ── Run prediction ─────────────────────────────────────────────────── */
   const handleRun = async (overrideDemo = null) => {
-    const activeDemo = overrideDemo || selectedDemo;
-    if (!file && !activeDemo) {
-      setErrorMsg('Please select a benchmark dataset or upload a NetCDF file first.');
-      setStatus('error');
-      return;
+    let payloadFile = null;
+    let payloadDemoId = null;
+    let payloadTargetDate = null;
+
+    if (activeTab === 'upload') {
+      if (!customFile) {
+        setErrorMsg('Please select or drag-and-drop a NetCDF (.nc) file first.');
+        setStatus('error');
+        return;
+      }
+      payloadFile = customFile;
+    } else {
+      const activeDemo = overrideDemo || selectedDemo;
+      if (!activeDemo) {
+        setErrorMsg('Please select a benchmark dataset first.');
+        setStatus('error');
+        return;
+      }
+      payloadDemoId = activeDemo.id;
+      payloadTargetDate = activeDemo.target_date;
     }
 
     setStatus('loading');
@@ -316,7 +294,7 @@ export default function InputPage() {
     }, 450);
 
     try {
-      await predictFromNC(file, activeDemo?.id, activeDemo?.target_date);
+      await predictFromNC(payloadFile, payloadDemoId, payloadTargetDate);
       clearInterval(stepTimer);
       navigate('/results');
     } catch (err) {
@@ -362,7 +340,9 @@ export default function InputPage() {
           Reconstructing 15-Layer Ocean Water Column
         </h2>
         <p style={{ color: '#64748b', fontSize: '0.86rem', margin: '0 0 24px' }}>
-          Target: <strong>{selectedDemo?.target_date || 'Custom Input'}</strong> · {selectedDemo?.season || file?.name}
+          {activeTab === 'upload' && customFile
+            ? `Custom File: ${customFile.name}`
+            : `Target: ${selectedDemo?.target_date} · ${selectedDemo?.season}`}
         </p>
 
         {/* Steps Progress */}
@@ -409,7 +389,11 @@ export default function InputPage() {
 
         <div style={{ fontSize: '0.8rem', color: '#64748b', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
           <Activity size={14} color="#0284c7" />
-          <span>High-throughput inference latency: <strong>~24.5 ms</strong></span>
+          <span>
+            {activeTab === 'upload'
+              ? 'Executing real neural forward pass on custom spatiotemporal tensor'
+              : 'High-throughput inference latency: ~24.5 ms'}
+          </span>
         </div>
       </div>
     );
@@ -546,10 +530,21 @@ export default function InputPage() {
         >
           <UploadCloud size={17} />
           <span>Upload Custom NetCDF (.nc)</span>
+          {customFile && (
+            <span style={{
+              fontSize: '0.68rem',
+              background: '#0284c7',
+              color: '#ffffff',
+              padding: '1px 6px',
+              borderRadius: 10,
+            }}>
+              1 File
+            </span>
+          )}
         </button>
       </div>
 
-      {/* ── TOP STICKY EXECUTION BAR (ALWAYS IN SIGHT, ZERO SCROLL NEEDED) ── */}
+      {/* ── TOP STICKY EXECUTION BAR (ALWAYS VISIBLE AT TOP, ZERO SCROLL NEEDED) ── */}
       <div style={{
         position: 'sticky',
         top: 68,
@@ -575,26 +570,34 @@ export default function InputPage() {
             alignItems: 'center',
             gap: 8,
           }}>
-            <Calendar size={18} color="#0284c7" />
+            {activeTab === 'upload' ? (
+              <UploadCloud size={18} color="#0284c7" />
+            ) : (
+              <Calendar size={18} color="#0284c7" />
+            )}
             <div>
               <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: '#0369a1' }}>
-                Active Target Date
+                {activeTab === 'upload' ? 'Upload Status' : 'Active Target Date'}
               </div>
               <div style={{ fontSize: '0.98rem', fontWeight: 800, color: '#0c4a6e', fontFamily: 'monospace' }}>
-                {selectedDemo?.target_date || 'Custom'}
+                {activeTab === 'upload'
+                  ? (customFile ? 'File Ready' : 'Awaiting File')
+                  : selectedDemo?.target_date}
               </div>
             </div>
           </div>
 
           <div>
             <div style={{ fontSize: '0.94rem', fontWeight: 700, color: '#0c4a6e' }}>
-              {selectedDemo?.season || 'Custom NetCDF Matrix'}
+              {activeTab === 'upload'
+                ? (customFile ? customFile.name : 'Drag & drop a custom NetCDF file below')
+                : selectedDemo?.season}
             </div>
             <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 2, display: 'flex', alignItems: 'center', gap: 10 }}>
               <span>11 Daily Surface Fields (7 Variables)</span>
               <span>·</span>
               <span>15 Depth Layers (0–1000m)</span>
-              {selectedDemo?.argo_float_count && (
+              {activeTab === 'benchmark' && selectedDemo?.argo_float_count && (
                 <>
                   <span>·</span>
                   <span style={{ color: '#059669', fontWeight: 600 }}>
@@ -606,47 +609,69 @@ export default function InputPage() {
           </div>
         </div>
 
-        {/* PRIMARY RUN BUTTON (Directly at top, instant 1-click) */}
-        <button
-          onClick={() => handleRun()}
-          disabled={isLoadingDemo}
-          style={{
-            background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-            color: '#ffffff',
-            border: 'none',
-            borderRadius: 8,
-            padding: '12px 24px',
-            fontSize: '0.96rem',
-            fontWeight: 800,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            boxShadow: '0 4px 14px rgba(2, 132, 199, 0.4)',
-            transition: 'all 0.15s ease',
-            whiteSpace: 'nowrap',
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.transform = 'translateY(-1px)';
-            e.currentTarget.style.boxShadow = '0 6px 18px rgba(2, 132, 199, 0.5)';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.transform = 'none';
-            e.currentTarget.style.boxShadow = '0 4px 14px rgba(2, 132, 199, 0.4)';
-          }}
-        >
-          <Play size={18} fill="#ffffff" />
-          <span>Run 15-Layer Reconstruction</span>
-          <span style={{
-            fontSize: '0.74rem',
-            background: 'rgba(255,255,255,0.22)',
-            padding: '2px 7px',
-            borderRadius: 4,
-            fontWeight: 700,
-          }}>
-            ~24 ms
-          </span>
-        </button>
+        {/* PRIMARY RUN BUTTON (Top bar) */}
+        {activeTab === 'upload' ? (
+          <button
+            onClick={() => {
+              if (!customFile) {
+                fileInputRef.current?.click();
+              } else {
+                handleRun();
+              }
+            }}
+            style={{
+              background: customFile ? 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)' : '#0284c7',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: 8,
+              padding: '12px 24px',
+              fontSize: '0.96rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              boxShadow: '0 4px 14px rgba(2, 132, 199, 0.4)',
+              transition: 'all 0.15s ease',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {customFile ? <Play size={18} fill="#ffffff" /> : <UploadCloud size={18} />}
+            <span>{customFile ? 'Run Model on Custom File' : 'Select File to Run'}</span>
+          </button>
+        ) : (
+          <button
+            onClick={() => handleRun()}
+            style={{
+              background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: 8,
+              padding: '12px 24px',
+              fontSize: '0.96rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              boxShadow: '0 4px 14px rgba(2, 132, 199, 0.4)',
+              transition: 'all 0.15s ease',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <Play size={18} fill="#ffffff" />
+            <span>Run 15-Layer Reconstruction</span>
+            <span style={{
+              fontSize: '0.74rem',
+              background: 'rgba(255,255,255,0.22)',
+              padding: '2px 7px',
+              borderRadius: 4,
+              fontWeight: 700,
+            }}>
+              ~24 ms
+            </span>
+          </button>
+        )}
       </div>
 
       {/* ── TAB 1: CURATED SEASONAL BENCHMARK DATASETS ── */}
@@ -706,7 +731,7 @@ export default function InputPage() {
               return (
                 <div
                   key={d.id || d.target_date}
-                  onClick={() => loadDemoByPath(d)}
+                  onClick={() => selectBenchmark(d)}
                   tabIndex={0}
                   role="button"
                   aria-pressed={isSelected}
@@ -816,7 +841,7 @@ export default function InputPage() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        loadDemoByPath(d);
+                        selectBenchmark(d);
                         handleRun(d);
                       }}
                       style={{
@@ -851,7 +876,7 @@ export default function InputPage() {
       {activeTab === 'upload' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 20, alignItems: 'start' }}>
 
-          {/* Left: Drag & Drop Zone */}
+          {/* Left: Drag & Drop Zone + Uploaded File Card */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div
               onDragOver={onDragOver}
@@ -875,7 +900,7 @@ export default function InputPage() {
                 style={{ display: 'none' }}
                 onChange={(e) => {
                   const f = e.target.files?.[0];
-                  if (f) handleFile(f, null);
+                  if (f) handleCustomFile(f);
                 }}
               />
 
@@ -913,11 +938,11 @@ export default function InputPage() {
               </span>
             </div>
 
-            {/* Selected File Card */}
-            {file && (
+            {/* Selected Custom File Card — STRICTLY SHOWN ONLY WHEN customFile EXISTS! */}
+            {customFile && (
               <div style={{
-                background: '#ffffff',
-                border: '1.5px solid #0284c7',
+                background: '#f0fdf4',
+                border: '1.5px solid #22c55e',
                 borderRadius: 10,
                 padding: '14px 18px',
                 display: 'flex',
@@ -925,36 +950,58 @@ export default function InputPage() {
                 alignItems: 'center',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <FileCheck size={24} color="#0284c7" />
+                  <FileCheck size={24} color="#16a34a" />
                   <div>
                     <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a' }}>
-                      {file.name}
+                      {customFile.name}
                     </div>
-                    <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
-                      {(file.size / (1024 * 1024)).toFixed(2)} MB · User Uploaded NetCDF Tensor
+                    <div style={{ fontSize: '0.78rem', color: '#15803d' }}>
+                      {(customFile.size / (1024 * 1024)).toFixed(2)} MB · Custom NetCDF Matrix Ready for Inference
                     </div>
                   </div>
                 </div>
 
-                <button
-                  onClick={() => handleRun()}
-                  style={{
-                    background: '#0284c7',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: 6,
-                    padding: '9px 18px',
-                    fontSize: '0.88rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                  }}
-                >
-                  <Play size={14} fill="#ffffff" />
-                  Run Model
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCustomFile(null);
+                    }}
+                    title="Remove File"
+                    style={{
+                      background: '#ffffff',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: 6,
+                      padding: '8px 10px',
+                      cursor: 'pointer',
+                      color: '#64748b',
+                      display: 'flex',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Trash2 size={15} color="#dc2626" />
+                  </button>
+
+                  <button
+                    onClick={() => handleRun()}
+                    style={{
+                      background: '#16a34a',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: 6,
+                      padding: '9px 18px',
+                      fontSize: '0.88rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <Play size={14} fill="#ffffff" />
+                    Run Model
+                  </button>
+                </div>
               </div>
             )}
           </div>
