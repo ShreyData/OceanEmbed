@@ -47,9 +47,9 @@ aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS 
 echo "✓ Docker login to ECR successful."
 
 # 4. Build Docker container image
-echo "Building OceanEmbed container image..."
+echo "Building OceanEmbed container image (single-platform, no attestation)..."
 cd "$(dirname "$0")"
-docker build -t "${ECR_REPO_NAME}:${IMAGE_TAG}" .
+docker build --provenance=false --platform linux/amd64 -t "${ECR_REPO_NAME}:${IMAGE_TAG}" .
 docker tag "${ECR_REPO_NAME}:${IMAGE_TAG}" "${ECR_URI}:${IMAGE_TAG}"
 echo "✓ Docker build complete."
 
@@ -71,8 +71,9 @@ if aws lambda get-function --function-name "$LAMBDA_FUNCTION_NAME" --region "$AW
     echo "✓ Lambda function updated successfully."
 else
     echo "Creating new Lambda function: $LAMBDA_FUNCTION_NAME"
-    echo "Note: If creating for the first time, ensure you have an execution role ARN."
-    read -p "Enter Lambda Execution Role ARN (e.g. arn:aws:iam::${AWS_ACCOUNT_ID}:role/service-role/...): " ROLE_ARN
+    DEFAULT_ROLE="arn:aws:iam::${AWS_ACCOUNT_ID}:role/AWSLambdaBasicExecutionRole"
+    read -p "Enter Lambda Execution Role ARN [default: $DEFAULT_ROLE]: " ROLE_ARN
+    ROLE_ARN="${ROLE_ARN:-$DEFAULT_ROLE}"
     
     aws lambda create-function \
         --function-name "$LAMBDA_FUNCTION_NAME" \
@@ -83,6 +84,9 @@ else
         --memory-size 2048 \
         --region "$AWS_REGION"
     
+    echo "Waiting for Lambda function to become active..."
+    aws lambda wait function-active --function-name "$LAMBDA_FUNCTION_NAME" --region "$AWS_REGION"
+
     echo "Enabling public Lambda Function URL (CORS enabled)..."
     URL_RES=$(aws lambda create-function-url-config \
         --function-name "$LAMBDA_FUNCTION_NAME" \
@@ -97,7 +101,14 @@ else
         --action lambda:InvokeFunctionUrl \
         --principal "*" \
         --function-url-auth-type NONE \
-        --region "$AWS_REGION"
+        --region "$AWS_REGION" 2>/dev/null || true
+
+    aws lambda add-permission \
+        --function-name "$LAMBDA_FUNCTION_NAME" \
+        --statement-id AllowInvokeFunction \
+        --action lambda:InvokeFunction \
+        --principal "*" \
+        --region "$AWS_REGION" 2>/dev/null || true
         
     echo "=========================================================="
     echo "🎉 DEPLOYMENT COMPLETE!"
