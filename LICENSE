@@ -1,0 +1,41 @@
+OceanEmbed Proprietary Evaluation License
+Copyright (c) 2026 Shreykumar Patel (GitHub: @ShreyData), Masir, Jeenal, Kapil, Harshit, Khushi
+Team ThreeSixNine. All Rights Reserved.
+
+1. OWNERSHIP. The OceanEmbed source code, model architecture, trained weights
+   (including .pth and .onnx files), loss formulations, data-processing
+   pipelines, documentation, figures, benchmark reports, and the deployed
+   service (collectively, the "Work") are the exclusive intellectual property
+   of the copyright holders. No rights are granted except as stated below.
+
+2. LIMITED EVALUATION RIGHT. Smart India Hackathon 2026 organisers, mentors and
+   jury members are granted a non-exclusive, non-transferable, revocable right
+   to view and run the Work solely to evaluate this submission.
+
+3. PROHIBITED. Without prior written permission of the copyright holders, you
+   may NOT:
+   a. copy, fork, reproduce, republish, or redistribute the Work or any part;
+   b. modify, adapt, translate, or create derivative works;
+   c. use the Work, its ideas of architecture, loss design, or documentation,
+      in whole or in part, in any hackathon, competition, publication,
+      product, or commercial or academic project, including as another
+      participant's or team's submission;
+   d. extract, reverse-engineer, or reuse the trained weights or exported
+      models;
+   e. scrape, resell, or offer the deployed service to third parties;
+   f. remove or alter this notice or any attribution.
+
+4. THIRD-PARTY DATA. Copernicus Marine (GLORYS12V1, etc.), ARGO/INCOIS and other
+   third-party datasets remain subject to their own licences and terms; this
+   licence does not cover them.
+
+5. NO WARRANTY. THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+   THE COPYRIGHT HOLDER SHALL NOT BE LIABLE FOR ANY CLAIM OR DAMAGES ARISING
+   FROM ITS USE.
+
+6. TERMINATION & ENFORCEMENT. Any violation automatically terminates all rights
+   granted herein. The copyright holders reserves the right to pursue all
+   remedies available under law, including the Copyright Act, 1957 (India), and
+   to report violations to the hackathon organisers for disqualification.
+
+Contact the copyright holders for any permission requests.
